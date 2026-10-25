@@ -1,8 +1,8 @@
-// Foundry and PF2e glue: the module's ids, the scene's environment state, a creature as the rules see it (src/rules/weather.js), and
+// Foundry and PF2e glue: the module's ids, the scene's environment state, a creature as the rules see it (the core's src/environment/weather.js), and
 // damage rolled and applied through PF2e.
 
-import { normalizeState } from "../src/rules/weather.js";
-import { WEATHER } from "../src/rules/catalog.js";
+import { normalizeState } from "../../pf2e-resolution-core/src/environment/weather.js";
+import { WEATHER } from "../../pf2e-resolution-core/src/environment/catalog.js";
 
 export const MODULE_ID = "pf2e-automatic-environment-resolution";
 export const FLAG = "environment";

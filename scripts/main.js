@@ -11,9 +11,9 @@ import { bindCard, onRollMessage, postCard } from "./cards.js";
 import { onBreathMessage } from "./breath.js";
 import { onTurnEnd, onTurnStart, onWorldTime } from "./ticks.js";
 import { regionEvent, setRegionFeature, setSceneGround } from "./regions.js";
-import { disasterCard } from "../src/rules/disasters.js";
-import { DAMAGE_CATEGORIES, setCategoryDefaults } from "../src/rules/catalog.js";
-import { creatureEffect, flatCheckFor, normalizeState } from "../src/rules/weather.js";
+import { disasterCard } from "../../pf2e-resolution-core/src/environment/disasters.js";
+import { DAMAGE_CATEGORIES, setCategoryDefaults } from "../../pf2e-resolution-core/src/environment/catalog.js";
+import { creatureEffect, flatCheckFor, normalizeState } from "../../pf2e-resolution-core/src/environment/weather.js";
 
 const open = (scene = canvas?.scene) => new EnvironmentApp(scene).render(true);
 

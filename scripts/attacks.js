@@ -1,9 +1,9 @@
 // Attacks in the weather (after PF2e's attack roll, on the active GM's client): the flat check against a target the weather conceals or
-// hides from the attacker (src/rules/weather.js flatCheckFor), rolled and posted; a physical ranged attack in a windstorm, or a bludgeoning
+// hides from the attacker (the core's src/environment/weather.js flatCheckFor), rolled and posted; a physical ranged attack in a windstorm, or a bludgeoning
 // or slashing one underwater, that can't hit. PF2e's own roll stands; the card says what the weather made of it.
 
 import { MODULE_ID, creatureOf, distanceBetween, escapeHTML, isActiveGM, sceneState } from "./foundry.js";
-import { effectiveWeather, flatCheckFor, rangedInWind } from "../src/rules/weather.js";
+import { effectiveWeather, flatCheckFor, rangedInWind } from "../../pf2e-resolution-core/src/environment/weather.js";
 
 const ATTACKS = new Set(["attack-roll", "spell-attack-roll"]);
 

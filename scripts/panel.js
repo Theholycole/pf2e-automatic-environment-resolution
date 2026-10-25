@@ -2,10 +2,10 @@
 // sheltered from it; the ground of the scene and of its regions; the natural disasters; doors, walls and portcullises for reference.
 
 import { MODULE_ID, escapeHTML, sceneData, setSceneState, setSheltered } from "./foundry.js";
-import { DAMAGE_CATEGORIES, DIRECTIONS, DISASTERS, FEATURES, FORCE_OPEN, STRUCTURES, TEMPERATURES, WEATHER, temperatureFromFahrenheit } from "../src/rules/catalog.js";
-import { bandDC, disasterCard, disasterCategories } from "../src/rules/disasters.js";
-import { FEATURE_GROUPS, featureRules } from "../src/rules/terrain.js";
-import { creatureEffect, normalizeState } from "../src/rules/weather.js";
+import { DAMAGE_CATEGORIES, DIRECTIONS, DISASTERS, FEATURES, FORCE_OPEN, STRUCTURES, TEMPERATURES, WEATHER, temperatureFromFahrenheit } from "../../pf2e-resolution-core/src/environment/catalog.js";
+import { bandDC, disasterCard, disasterCategories } from "../../pf2e-resolution-core/src/environment/disasters.js";
+import { FEATURE_GROUPS, featureRules } from "../../pf2e-resolution-core/src/environment/terrain.js";
+import { creatureEffect, normalizeState } from "../../pf2e-resolution-core/src/environment/weather.js";
 import { igniteGas, partCrowd, regionFeature, sceneGround, setRegionFeature, setSceneGround } from "./regions.js";
 import { postCard } from "./cards.js";
 import { buriedEffectOf, digCard, freeCreature } from "./burial.js";

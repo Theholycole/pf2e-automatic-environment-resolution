@@ -1,9 +1,9 @@
-// The module's cards: a disaster's (src/rules/disasters.js) or a terrain check's, posted for the creatures the GM picked. Its damage is
+// The module's cards: a disaster's (the core's src/environment/disasters.js) or a terrain check's, posted for the creatures the GM picked. Its damage is
 // rolled once as it's posted; each creature rolls its own save or check from the card (its owner or the GM; the result comes back through
 // PF2e's roll message, matched by its identifier); the GM's Apply does what each degree says. State in the message's flags.
 
 import { MODULE_ID, dealDamage, escapeHTML, isActiveGM, persistentDamage } from "./foundry.js";
-import { fallingDamage } from "../src/rules/disasters.js";
+import { fallingDamage } from "../../pf2e-resolution-core/src/environment/disasters.js";
 import { pushToken } from "./movement.js";
 import { buryCreature, freeCreature } from "./burial.js";
 import { partRegion } from "./regions.js";

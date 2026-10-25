@@ -4,10 +4,10 @@
 // advance it 6 seconds a round): temperature, hot ash, burial, lightning, travel fatigue — the user's choice, 2026-10-25.
 
 import { FLAG, MODULE_ID, creatureOf, escapeHTML, isActiveGM, livingTokens, noteToGM, sceneData, sceneState } from "./foundry.js";
-import { clockDamage, fatigueHours, lightningChances, turnStartDamage } from "../src/rules/ticks.js";
-import { categoryDice, levelOf } from "../src/rules/catalog.js";
-import { effectiveWeather } from "../src/rules/weather.js";
-import { disasterCard } from "../src/rules/disasters.js";
+import { clockDamage, fatigueHours, lightningChances, turnStartDamage } from "../../pf2e-resolution-core/src/environment/ticks.js";
+import { categoryDice, levelOf } from "../../pf2e-resolution-core/src/environment/catalog.js";
+import { effectiveWeather } from "../../pf2e-resolution-core/src/environment/weather.js";
+import { disasterCard } from "../../pf2e-resolution-core/src/environment/disasters.js";
 import { applyCard, cardOf, hitTokens, postCard } from "./cards.js";
 import { syncToken } from "./sync.js";
 import { breathTurnEnd } from "./breath.js";

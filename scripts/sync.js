@@ -1,9 +1,9 @@
-// The weather on the creatures: each token's Effect (src/rules/weather.js creatureEffect), kept in step with the scene's toggles; PF2e's
+// The weather on the creatures: each token's Effect (the core's src/environment/weather.js creatureEffect), kept in step with the scene's toggles; PF2e's
 // Remaining Air for those who must hold their breath; and the scene-wide region for what the weather does to movement (wind on fliers)
 // and the environment types it adds (aquatic underwater). Run on the active GM's client.
 
 import { MODULE_ID, creatureOf, isActiveGM, sceneState } from "./foundry.js";
-import { REMAINING_AIR, breathlessIn, creatureEffect, effectiveWeather, sceneMovementCosts } from "../src/rules/weather.js";
+import { REMAINING_AIR, breathlessIn, creatureEffect, effectiveWeather, sceneMovementCosts } from "../../pf2e-resolution-core/src/environment/weather.js";
 
 const ICON = "icons/magic/air/wind-weather-sailing-ship.webp";
 const AIR_FLAG = "air";

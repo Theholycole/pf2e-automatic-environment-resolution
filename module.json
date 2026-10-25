@@ -28,6 +28,17 @@
           "verified": "8.6.1"
         }
       }
+    ],
+    "requires": [
+      {
+        "id": "pf2e-resolution-core",
+        "type": "module",
+        "reason": "GM Core's environment rules live in the core, shared with the Combat Simulator; its forced movement moves creatures.",
+        "manifest": "https://github.com/Theholycole/PF2e-Automation-Core/releases/latest/download/module.json",
+        "compatibility": {
+          "minimum": "0.7.4"
+        }
+      }
     ]
   },
   "esmodules": [

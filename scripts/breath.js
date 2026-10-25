@@ -5,7 +5,7 @@
 // each time; death on a critical failure.
 
 import { MODULE_ID, isActiveGM } from "./foundry.js";
-import { BREATH } from "../src/rules/catalog.js";
+import { BREATH } from "../../pf2e-resolution-core/src/environment/catalog.js";
 import { postCard } from "./cards.js";
 
 const UNCONSCIOUS = "Compendium.pf2e.conditionitems.Item.fBnFDH2MTzgFijKf";

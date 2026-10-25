@@ -14,7 +14,7 @@ The user's answers:
 
 ## Layout
 
-- `src/rules/`: pure rules, tested in node.
+- The resolution core's `src/environment/`: the pure rules, tested in node. They live in the core so the Combat Simulator's fights use the same ones.
   - `catalog.js`: GM Core's tables as data.
   - `weather.js`: each creature's Effect, flat checks, and the temperature it feels.
   - `ticks.js`: what comes due over time.

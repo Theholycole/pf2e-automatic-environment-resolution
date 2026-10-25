@@ -3,7 +3,7 @@
 // behind the creature. Without it, square by square in the direction, every second diagonal 10 feet, stopping at a wall or the edge.
 
 import { MODULE_ID } from "./foundry.js";
-import { DIRECTIONS } from "../src/rules/catalog.js";
+import { DIRECTIONS } from "../../pf2e-resolution-core/src/environment/catalog.js";
 
 // The squares a push of so many feet covers in a direction ([dx, dy] per square).
 export function pushSquares(feet, direction, distance = 5) {

@@ -3,8 +3,8 @@
 // "Dig out" card, an Athletics check for each digger: a success frees it after 4 minutes of digging (2 on a critical success).
 
 import { MODULE_ID } from "./foundry.js";
-import { burialDamage } from "../src/rules/ticks.js";
-import { categoryDice } from "../src/rules/catalog.js";
+import { burialDamage } from "../../pf2e-resolution-core/src/environment/ticks.js";
+import { categoryDice } from "../../pf2e-resolution-core/src/environment/catalog.js";
 
 const RESTRAINED = "Compendium.pf2e.conditionitems.Item.VcDeM8A5oI6VqhbM";
 const BURIED = "buried";

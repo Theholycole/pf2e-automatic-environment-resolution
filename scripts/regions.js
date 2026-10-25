@@ -1,11 +1,11 @@
-// Terrain: a region the GM gives one of GM Core's environmental features (src/rules/terrain.js featureRules), or the whole scene's ground.
+// Terrain: a region the GM gives one of GM Core's environmental features (the core's src/environment/terrain.js featureRules), or the whole scene's ground.
 // The region gets PF2e's movement costs and environment types, and a script behavior whose events come here: the Effect a creature holds
 // while inside (off-guard on uneven ground or a narrow surface, cover), Balance on entering, hazard damage, a current's push.
 
 import { MODULE_ID, creatureOf, isActiveGM, persistentDamage } from "./foundry.js";
-import { featureRules } from "../src/rules/terrain.js";
-import { FEATURES } from "../src/rules/catalog.js";
-import { disasterCard } from "../src/rules/disasters.js";
+import { featureRules } from "../../pf2e-resolution-core/src/environment/terrain.js";
+import { FEATURES } from "../../pf2e-resolution-core/src/environment/catalog.js";
+import { disasterCard } from "../../pf2e-resolution-core/src/environment/disasters.js";
 import { hitTokens, postCard } from "./cards.js";
 import { pushToken } from "./movement.js";
 
