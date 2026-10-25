@@ -1,0 +1,24 @@
+/* PF2e Automatic Environment Resolution */
+.pf2e-env .window-content { display: flex; flex-direction: column; gap: 0.5rem; overflow-y: auto; }
+.pf2e-env-tabs { display: flex; gap: 0.25rem; }
+.pf2e-env-tabs button { flex: 1; }
+.pf2e-env-tabs button.active { font-weight: bold; box-shadow: inset 0 -2px 0 var(--color-border-highlight, #ff6400); }
+.pf2e-env-body { display: flex; flex-direction: column; gap: 0.4rem; }
+.pf2e-env-toggle { border: 1px solid var(--color-border-light-tertiary, #8884); border-radius: 4px; padding: 0.25rem 0.5rem; opacity: 0.75; }
+.pf2e-env-toggle.on { opacity: 1; }
+.pf2e-env-toggle legend { font-weight: bold; padding: 0 0.25rem; }
+.pf2e-env-row { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+.pf2e-env-row input[type="number"] { width: 4.5em; }
+.pf2e-env .hint { font-size: var(--font-size-11, 11px); opacity: 0.8; margin: 0.15rem 0; }
+.pf2e-env-creatures { list-style: none; margin: 0; padding: 0; max-height: 14rem; overflow-y: auto; }
+.pf2e-env-creatures li { padding: 0.1rem 0; }
+.pf2e-env-footer { display: flex; gap: 0.5rem; position: sticky; bottom: 0; padding: 0.4rem 0; background: inherit; }
+.pf2e-env-footer button { flex: 1; }
+.pf2e-env-table { width: 100%; border-collapse: collapse; }
+.pf2e-env-table td, .pf2e-env-table th { padding: 0.15rem 0.3rem; vertical-align: middle; }
+.pf2e-env-open { flex: 0 0 auto; margin: 0.25rem; }
+.pf2e-env-card header { border-bottom: 1px solid #8886; margin-bottom: 0.25rem; }
+.pf2e-env-card .pf2e-env-targets { width: 100%; }
+.pf2e-env-card .pf2e-env-targets tr.applied { opacity: 0.6; }
+.pf2e-env-card .pf2e-env-note { font-size: var(--font-size-11, 11px); opacity: 0.85; }
+.pf2e-env-card button { line-height: 1.4; }
