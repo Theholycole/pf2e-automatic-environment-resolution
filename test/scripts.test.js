@@ -28,3 +28,13 @@ test("a card: its check, its rolled damage, a roll button for each creature unti
     assert.match(html, /Success \(31\)/);
     assert.match(html, /Apply \(GM\)/);
 });
+
+test("the scene's state written out in full: a toggle switched off is null, a field left empty is null (Foundry merges flags)", async () => {
+    const { fullState } = await import("../scripts/foundry.js");
+    const state = fullState({ fog: { level: "thick", beyond: 25 } });
+    assert.equal(state.precipitation, null);
+    assert.equal(state.fog.beyond, 25);
+    assert.equal(state.fog.kind, null);
+    assert.equal(state.temperature, "normal");
+    assert.equal(fullState({ fog: { beyond: 25 } }).fog, null, "no level: off");
+});

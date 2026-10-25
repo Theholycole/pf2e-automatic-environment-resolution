@@ -16,13 +16,15 @@ import { burialHits } from "./burial.js";
 
 const SIZE_PENALTY = { tiny: -2, sm: -1 };
 
-// Foundry's combatTurnChange: the turn that ended, then the one that starts.
-export async function onTurnChange(combat, prior, current) {
-    if (!isActiveGM() || !combat?.started) return;
-    const ended = prior?.combatantId ? combat.combatants.get(prior.combatantId) : null;
-    const starting = current?.combatantId ? combat.combatants.get(current.combatantId) : null;
-    if (ended && ended !== starting) await safely(() => turnEnd(combat, ended, prior.round));
-    if (starting) await safely(() => turnStart(combat, starting, current.round));
+// PF2e's pf2e.startTurn and pf2e.endTurn (Foundry 14's combatTurnChange gives the new turn as the old one too), one at a time.
+// (The round a turn ends in: the one PF2e noted as it started, flags.pf2e.roundOfLastTurn.)
+let queue = Promise.resolve();
+const serially = (run) => (queue = queue.then(() => safely(run)));
+export function onTurnStart(combatant, encounter) {
+    if (isActiveGM()) return serially(() => turnStart(encounter, combatant, encounter?.round ?? 0));
+}
+export function onTurnEnd(combatant, encounter) {
+    if (isActiveGM()) return serially(() => turnEnd(encounter, combatant, combatant?.flags?.pf2e?.roundOfLastTurn ?? encounter?.round ?? 0));
 }
 
 async function safely(run) {
@@ -81,20 +83,24 @@ async function turnEnd(combat, combatant, round) {
     const card = game.messages.contents.findLast((message) => cardOf(message)?.wind?.combatantId === combatant.id && cardOf(message).wind.round === round);
     const wind = cardOf(card);
     if (wind && creatureOf(token, scene).flying && !["success", "criticalSuccess"].includes(wind.targets[0]?.degree) && !wind.targets[0]?.applied) {
-        await pushToken(token, wind.wind.feet, wind.wind.direction);
+        const moved = await pushToken(token, wind.wind.feet, wind.wind.direction);
         await card.update({ [`flags.${MODULE_ID}.card.targets`]: wind.targets.map((target) => ({ ...target, applied: true })) });
-        await noteToGM(`<p>${escapeHTML(token.name)} is blown ${wind.wind.feet} feet ${wind.wind.direction}.</p>`, { title: "Wind" });
+        await noteToGM(`<p>${escapeHTML(token.name)} ${moved ? `is blown ${wind.wind.feet} feet ${wind.wind.direction}` : `would be blown ${wind.wind.feet} feet ${wind.wind.direction}, but something stops it`}.</p>`, { title: "Wind" });
     }
 }
 
-// The world clock moved: each scene in play (the active one, the fight's) ticks from where it last did.
+// The world clock moved: each scene in play (the active one, the fight's) with weather or a buried creature ticks from where it last did.
 export async function onWorldTime(worldTime) {
     if (!isActiveGM()) return;
     const scenes = new Set([game.scenes.active, game.combat?.scene].filter(Boolean));
     for (const scene of scenes) await safely(() => tickScene(scene, worldTime));
 }
 
-async function tickScene(scene, now) {
+// (Nothing set on a scene and no one buried there: nothing to do, and nothing written to it.)
+const quiet = (scene) => !scene.getFlag(MODULE_ID, FLAG) && ![...scene.tokens].some((token) => (token.actor?.itemTypes?.effect ?? []).some((effect) => effect.flags?.[MODULE_ID]?.buried));
+
+export async function tickScene(scene, now) {
+    if (quiet(scene)) return;
     const data = sceneData(scene);
     const from = data.clock ?? now;
     await scene.setFlag(MODULE_ID, FLAG, { ...data, clock: now });

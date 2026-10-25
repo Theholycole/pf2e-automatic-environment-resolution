@@ -31,7 +31,9 @@ export async function onAttackMessage(message) {
         const concealedByWeather = (target.actor?.itemTypes?.condition ?? []).some((condition) => condition.slug === "concealed" && condition.flags?.pf2e?.grantedBy && target.actor.items.get(condition.flags.pf2e.grantedBy.id)?.flags?.[MODULE_ID]?.weather);
         const check = flatCheckFor(state, { attacker: creatureOf(attacker), target: creatureOf(target), distance: distanceBetween(attacker, target) });
         const strike = context.type === "attack-roll";
-        if (check && (strike || !concealedByWeather || check.dc === 11)) lines.push(await flatCheckLine(check, attacker));
+        // (A miss needs no flat check.)
+        const missed = ["failure", "criticalFailure"].includes(context.outcome);
+        if (check && !missed && (strike || !concealedByWeather || check.dc === 11)) lines.push(await flatCheckLine(check, attacker));
     }
     if (!lines.length) return;
     await ChatMessage.create({

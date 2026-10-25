@@ -51,7 +51,8 @@ export class EnvironmentApp extends ApplicationV2 {
             disaster: EnvironmentApp.#onDisaster,
             dig: EnvironmentApp.#onDig,
             free: EnvironmentApp.#onFree,
-            tab: EnvironmentApp.#onTab,
+            // (Not "tab": ApplicationV2 keeps that action for its own tab groups.)
+            switchTab: EnvironmentApp.#onTab,
             fahrenheit: EnvironmentApp.#onFahrenheit
         }
     };
@@ -73,7 +74,7 @@ export class EnvironmentApp extends ApplicationV2 {
         const raw = data.state ?? {};
         const state = normalizeState(raw);
         const tabs = [["weather", "Weather"], ["ground", "Ground"], ["disasters", "Disasters"], ["structures", "Doors and walls"]];
-        const nav = `<nav class="pf2e-env-tabs">${tabs.map(([key, label]) => `<button type="button" data-action="tab" data-tab="${key}" class="${this.tab === key ? "active" : ""}">${label}</button>`).join("")}</nav>`;
+        const nav = `<nav class="pf2e-env-tabs">${tabs.map(([key, label]) => `<button type="button" data-action="switchTab" data-tab="${key}" class="${this.tab === key ? "active" : ""}">${label}</button>`).join("")}</nav>`;
         const body = { weather: () => this.#weatherTab(state, data), ground: () => this.#groundTab(), disasters: () => this.#disasterTab(), structures: () => this.#structuresTab() }[this.tab]();
         return `${nav}<section class="pf2e-env-body">${body}</section>`;
     }
@@ -89,7 +90,8 @@ export class EnvironmentApp extends ApplicationV2 {
     #weatherTab(state, data) {
         const rows = Object.entries(WEATHER).map(([toggle, entry]) => {
             const on = Boolean(state[toggle]);
-            const level = state[toggle]?.level ?? entry.levels[Math.min(1, entry.levels.length - 1)].key;
+            // (Off: its first level that does something — Fog past Mist, a thunderstorm's ordinary one.)
+            const level = state[toggle]?.level ?? entry.levels[entry.levels.length > 2 ? 1 : 0].key;
             return `<fieldset class="pf2e-env-toggle ${on ? "on" : ""}">
                 <legend><label><input type="checkbox" name="${toggle}.on"${on ? " checked" : ""}> ${escapeHTML(entry.label)}</label></legend>
                 <div class="pf2e-env-row"><select name="${toggle}.level">${entry.levels.map((entryLevel) => option(entryLevel.key, `${entryLevel.label}${Number.isFinite(entryLevel.penalty) && entryLevel.penalty ? ` (${entryLevel.penalty})` : ""}`, level)).join("")}</select> ${weatherFields(toggle, state[toggle])}</div>

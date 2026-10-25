@@ -96,21 +96,26 @@ export async function onRollMessage(message) {
     await card.update({ content: cardHTML(next), [`flags.${MODULE_ID}.${CARD}`]: next });
 }
 
-// Apply: each creature that has its degree and isn't done yet. (Exported for the weather's own cards with no check, applied at once.)
+// Apply: each creature that has its degree and isn't done yet, marked done as it's applied (a second Apply while one runs does nothing).
+// (Exported for the weather's own cards with no check, applied at once.)
+const applying = new Set();
 export async function applyCard(message) {
     if (!game.user.isGM) throw new Error("Only the GM applies the card.");
-    const state = cardOf(message);
-    let targets = state.targets;
-    for (const target of state.targets) {
-        if (target.applied || !target.degree) continue;
-        const token = await fromUuid(target.tokenUuid).catch(() => null);
-        if (!token?.actor) continue;
-        const row = target.degree === "automatic" ? state.automatic : state.degrees?.[target.degree];
-        if (row) await applyRow(token, row, state);
-        targets = targets.map((entry) => (entry.id === target.id ? { ...entry, applied: true } : entry));
+    if (applying.has(message.id)) return;
+    applying.add(message.id);
+    try {
+        for (const target of cardOf(message).targets) {
+            if (target.applied || !target.degree) continue;
+            const token = await fromUuid(target.tokenUuid).catch(() => null);
+            const state = cardOf(message);
+            const row = target.degree === "automatic" ? state.automatic : state.degrees?.[target.degree];
+            if (token?.actor && row) await applyRow(token, row, state);
+            const next = { ...cardOf(message), targets: cardOf(message).targets.map((entry) => (entry.id === target.id ? { ...entry, applied: true } : entry)) };
+            await message.update({ content: cardHTML(next), [`flags.${MODULE_ID}.${CARD}`]: next });
+        }
+    } finally {
+        applying.delete(message.id);
     }
-    const next = { ...state, targets };
-    await message.update({ content: cardHTML(next), [`flags.${MODULE_ID}.${CARD}`]: next });
 }
 
 async function applyRow(token, row, state) {

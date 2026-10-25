@@ -137,7 +137,7 @@ export const WEATHER = {
     ash: {
         label: "Volcanic ash",
         sense: "sight",
-        levels: SMOKE_LEVELS.map((level) => ({ ...level, label: level.label.replace(/smoke/i, "ash") })),
+        levels: SMOKE_LEVELS.map((level, index) => ({ ...level, label: ["Light ash", "Ash", "Thick ash", "Choking ash"][index] })),
         damage: { category: "minor", type: "fire", every: MINUTE },
         // Ash lightning: "very unlikely to hit an individual creature".
         chance: 1000,

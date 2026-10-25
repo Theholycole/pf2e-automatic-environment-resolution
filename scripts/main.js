@@ -9,7 +9,7 @@ import { clearActor, syncScene, syncToken } from "./sync.js";
 import { onAttackMessage } from "./attacks.js";
 import { bindCard, onRollMessage, postCard } from "./cards.js";
 import { onBreathMessage } from "./breath.js";
-import { onTurnChange, onWorldTime } from "./ticks.js";
+import { onTurnEnd, onTurnStart, onWorldTime } from "./ticks.js";
 import { regionEvent, setRegionFeature, setSceneGround } from "./regions.js";
 import { disasterCard } from "../src/rules/disasters.js";
 import { DAMAGE_CATEGORIES, setCategoryDefaults } from "../src/rules/catalog.js";
@@ -83,7 +83,8 @@ Hooks.on("deleteToken", (token) => {
     if (!elsewhere) clearActor(token.actor);
 });
 
-Hooks.on("combatTurnChange", (combat, prior, current) => onTurnChange(combat, prior, current));
+Hooks.on("pf2e.startTurn", (combatant, encounter) => onTurnStart(combatant, encounter));
+Hooks.on("pf2e.endTurn", (combatant, encounter) => onTurnEnd(combatant, encounter));
 Hooks.on("updateWorldTime", (worldTime) => onWorldTime(worldTime));
 Hooks.on("createChatMessage", (message) => {
     onAttackMessage(message).catch((error) => console.error(`${MODULE_ID} |`, error));

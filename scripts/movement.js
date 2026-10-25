@@ -1,5 +1,6 @@
-// Forced movement by the environment — a current, a gust that blows a flier away, a flood that carries a creature off: square by square in
-// a direction, every second diagonal 10 feet (PF2e's rule), stopping at a wall or the scene's edge.
+// Forced movement by the environment — a current, a gust that blows a flier away, a flood that carries a creature off. The resolution
+// core's forcedMove when it's there (walls, the scene's edge, other creatures' spaces; a displacement, so no reactions): away from a point
+// behind the creature. Without it, square by square in the direction, every second diagonal 10 feet, stopping at a wall or the edge.
 
 import { MODULE_ID } from "./foundry.js";
 import { DIRECTIONS } from "../src/rules/catalog.js";
@@ -24,12 +25,21 @@ export function pushSquares(feet, direction, distance = 5) {
 export async function pushToken(tokenDoc, feet, direction) {
     const doc = tokenDoc?.document ?? tokenDoc;
     const scene = doc?.parent;
-    if (!doc || !scene || !(feet > 0)) return false;
+    if (!doc || !scene || !(feet > 0) || !DIRECTIONS[direction]) return false;
     const size = scene.grid.size;
+    const mover = game.modules.get("pf2e-resolution-core")?.active ? game.modules.get("pf2e-resolution-core")?.api?.forcedMovement : null;
+    if (typeof mover?.forcedMove === "function") {
+        const [dx, dy] = DIRECTIONS[direction];
+        const centre = { x: doc._source.x + (doc.width * size) / 2, y: doc._source.y + (doc.height * size) / 2 };
+        const point = { x: centre.x - dx * size * 20, y: centre.y - dy * size * 20 };
+        const result = await mover.forcedMove(doc, { point, direction: "away", feet, reason: "Environment" });
+        return Boolean(result?.moved);
+    }
     const steps = pushSquares(feet, direction, scene.grid.distance || 5);
     const half = { x: (doc.width * size) / 2, y: (doc.height * size) / 2 };
     const { width, height } = scene.dimensions;
-    let at = { x: doc.x, y: doc.y };
+    // (Its stored place: Foundry 14's prepared x and y can lag behind while the token animates.)
+    let at = { x: doc._source.x, y: doc._source.y };
     for (const [dx, dy] of steps) {
         const next = { x: at.x + dx * size, y: at.y + dy * size };
         if (next.x < 0 || next.y < 0 || next.x + doc.width * size > width || next.y + doc.height * size > height) break;
@@ -44,7 +54,7 @@ export async function pushToken(tokenDoc, feet, direction) {
         if (blocked) break;
         at = next;
     }
-    if (at.x === doc.x && at.y === doc.y) return false;
-    await doc.update({ x: at.x, y: at.y }, { [MODULE_ID]: { forced: true } });
+    if (at.x === doc._source.x && at.y === doc._source.y) return false;
+    await doc.update({ x: at.x, y: at.y }, { teleport: true, animate: false, [MODULE_ID]: { forced: true } });
     return true;
 }

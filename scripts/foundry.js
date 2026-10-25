@@ -2,6 +2,7 @@
 // damage rolled and applied through PF2e.
 
 import { normalizeState } from "../src/rules/weather.js";
+import { WEATHER } from "../src/rules/catalog.js";
 
 export const MODULE_ID = "pf2e-automatic-environment-resolution";
 export const FLAG = "environment";
@@ -17,17 +18,28 @@ export function sceneData(scene) {
 }
 export const sceneState = (scene) => normalizeState(sceneData(scene).state);
 
+// Every key a toggle can hold: written out, null where the GM left it empty, so Foundry's merge of the flag drops what the GM took away.
+const TOGGLE_KEYS = ["level", "kind", "beyond", "hiddenBeyond", "direction", "flightDC", "groundDC", "blownFeet", "feet", "chance", "dc", "unbreathable", "heat", "harm"];
+const SINCE_KEYS = ["temperature", "ash", "thunderstorm", "smoke", "sandstorm"];
+export function fullState(raw = {}) {
+    const state = { temperature: raw.temperature ?? "normal", travel: raw.travel?.on ? { on: true, since: Number(raw.travel.since) || 0 } : null };
+    for (const toggle of Object.keys(WEATHER)) state[toggle] = raw[toggle]?.level ? Object.fromEntries(TOGGLE_KEYS.map((key) => [key, raw[toggle][key] ?? null])) : null;
+    return state;
+}
+
 // The GM's new toggles: what started now gets its start time (temperature, ash and storms count their intervals from it).
 export async function setSceneState(scene, raw) {
     const before = sceneData(scene);
-    const next = normalizeState(raw);
+    const state = fullState(raw);
+    const next = normalizeState(state);
     const now = game.time.worldTime;
     const since = {};
-    for (const key of ["temperature", "ash", "thunderstorm", "smoke", "sandstorm"]) {
+    for (const key of SINCE_KEYS) {
         const on = key === "temperature" ? next.temperature !== "normal" : Boolean(next[key]);
-        if (on) since[key] = before.since[key] ?? now;
+        since[key] = on ? before.since[key] ?? now : null;
     }
-    return scene.setFlag(MODULE_ID, FLAG, { ...before, state: raw, since, clock: before.clock ?? now });
+    // (The clock from now: the module ticks it as the world's moves, so nothing is lost; an old one would count weather that wasn't there.)
+    return scene.setFlag(MODULE_ID, FLAG, { ...before, state, since, clock: now });
 }
 
 export async function setSheltered(scene, tokenIds) {
@@ -67,7 +79,8 @@ export function creatureOf(token, scene = token?.parent) {
         traits,
         senses: sensesOf(actor),
         speeds: { fly: speedOf(actor, "fly"), swim: speedOf(actor, "swim"), burrow: speedOf(actor, "burrow"), climb: speedOf(actor, "climb") },
-        flying: speedOf(actor, "fly") > 0 && Number(token.elevation ?? token.document?.elevation) > 0,
+        // (Foundry 14: a flier's movement action is "fly"; PF2e keeps a walker's elevation at the ground.)
+        flying: speedOf(actor, "fly") > 0 && ((token.document ?? token).movementAction === "fly" || Number((token.document ?? token).elevation) > 0),
         breathesWater: traits.includes("aquatic") || traits.includes("amphibious") || names.some((name) => /water breathing|amphibious/.test(name)) || slugs.some((slug) => /water-breathing/.test(slug)),
         noBreath: names.some((name) => /doesn't need to breathe|does not breathe|no breath/.test(name)) || (traits.includes("construct") && !traits.includes("eidolon")) || traits.includes("undead"),
         snowVision: names.some((name) => /snow vision/.test(name)),

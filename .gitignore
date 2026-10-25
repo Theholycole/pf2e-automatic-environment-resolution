@@ -1,3 +1,4 @@
 *.kate-swp
 node_modules/
 .cache/
+live-boot.js
