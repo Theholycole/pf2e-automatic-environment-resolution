@@ -11,7 +11,7 @@ import { bindCard, onRollMessage, postCard } from "./cards.js";
 import { onBreathMessage } from "./breath.js";
 import { onTurnEnd, onTurnStart, onWorldTime } from "./ticks.js";
 import { migrateRegions, regionEvent, setRegionFeature, setSceneGround } from "./regions.js";
-import { installStairsCost } from "./stairs.js";
+import { installTerrainCost } from "./terrain-cost.js";
 import { windMoveGate } from "./wind.js";
 import { onSpellCast, targetFlatCheck } from "./spells.js";
 import { disasterCard } from "../../pf2e-resolution-core/src/environment/disasters.js";
@@ -61,8 +61,8 @@ Hooks.once("ready", () => {
         rules: Object.freeze({ creatureEffect, flatCheckFor, normalizeState })
     });
     if (isActiveGM() && canvas?.scene) syncScene(canvas.scene);
-    // (Stairs: their cost going up — every client measures movement.)
-    installStairsCost();
+    // (Stairs going up, and a creature's own ignoring of a feature — every client measures movement: scripts/terrain-cost.js.)
+    installTerrainCost();
     if (isActiveGM()) migrateRegions().catch((error) => console.warn(`${MODULE_ID} | updating regions:`, error));
 });
 

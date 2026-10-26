@@ -4,7 +4,8 @@
 // through it, a current's push. Stairs' cost going up is scripts/stairs.js's.
 
 import { MODULE_ID, creatureOf, isActiveGM, isCreature, persistentDamage } from "./foundry.js";
-import { featureRules } from "../../pf2e-resolution-core/src/environment/terrain.js";
+import { featureRules, sureFooted } from "../../pf2e-resolution-core/src/environment/terrain.js";
+import { ignoredOf } from "./terrain-cost.js";
 import { DIRECTIONS, FEATURES } from "../../pf2e-resolution-core/src/environment/catalog.js";
 import { disasterCard } from "../../pf2e-resolution-core/src/environment/disasters.js";
 import { hitTokens, postCard } from "./cards.js";
@@ -61,13 +62,17 @@ export async function setSceneGround(scene, key, options = {}) {
 }
 export const sceneGround = (scene) => regionFeature([...(scene?.regions ?? [])].find((entry) => entry.flags?.[MODULE_ID]?.[GROUND]));
 
+// (A creature sure-footed there — its own ignoring of ice, snow or undergrowth: Frostwalker Pattern — isn't off-guard on it.)
 async function addInside(token, region, rules) {
     if (!rules.effect || insideEffects(token.actor, region.uuid).length) return;
+    const steady = sureFooted(regionFeature(region)?.key, ignoredOf(token.actor));
+    const effectRules = steady ? rules.effect.rules.filter((rule) => rule.flag !== "terrainOffGuard") : rules.effect.rules;
+    if (!effectRules.length) return;
     await token.actor.createEmbeddedDocuments("Item", [{
         name: rules.effect.name,
         type: "effect",
         img: "icons/environment/wilderness/terrain-rocky-ground.webp",
-        system: { slug: "environment-terrain", duration: { value: -1, unit: "unlimited", expiry: null, sustained: false }, rules: rules.effect.rules, description: { value: `<ul>${rules.summary.map((line) => `<li>${line}</li>`).join("")}</ul>` } },
+        system: { slug: "environment-terrain", duration: { value: -1, unit: "unlimited", expiry: null, sustained: false }, rules: effectRules, description: { value: `<ul>${rules.summary.map((line) => `<li>${line}</li>`).join("")}${steady && rules.events.balance ? "<li>Sure-footed here: no Balance, not off-guard.</li>" : ""}</ul>` } },
         flags: { [MODULE_ID]: { region: region.uuid } }
     }]);
 }
@@ -99,7 +104,7 @@ export async function regionEvent(region, behavior, event) {
             handledMoves.add(key);
             setTimeout(() => handledMoves.delete(key), 60000);
             const forced = (movement?.passed?.waypoints ?? []).every((point) => point.action === "displace");
-            if (rules.events.balance && !forced) await postCard(balanceCard(rules, movement?.origin ?? null), [token]);
+            if (rules.events.balance && !forced && !sureFooted(terrain.key, ignoredOf(token.actor))) await postCard(balanceCard(rules, movement?.origin ?? null), [token]);
             if (hazard?.when === "enter") await hazardHit(token, rules);
             return;
         }
