@@ -147,7 +147,10 @@ async function applyRow(token, row, state) {
     const fallFeet = row.falls?.feet ?? row.pickedUp?.falling ?? null;
     const fall = fallFeet === null ? null : easedFall(fallFeet, fallEasesOf(actor));
     if (fall?.damage) parts.push(`${fall.damage}[bludgeoning]`);
-    if (fall?.by) await noteToGM(`<p>${escapeHTML(token.name)}'s fall: ${fallFeet} feet, ${fall.damage ? `as if ${fall.feet}` : "no damage"} (${escapeHTML(fall.by)}).</p>`, { title: "Falling" });
+    if (fall?.by) {
+        const reduced = fall.reductions.map((entry) => `${entry.amount} less from ${escapeHTML(entry.source ?? "an item")}`).join(", ");
+        await noteToGM(`<p>${escapeHTML(token.name)}'s fall: ${fallFeet} feet, ${fall.damage ? `${fall.feet === fallFeet ? "" : `as if ${fall.feet}, `}${fall.damage} damage` : "no damage"}${reduced ? ` (${reduced})` : ""} (${escapeHTML(fall.by)}).</p>`, { title: "Falling" });
+    }
     const live = parts.filter((part) => !part.startsWith("0["));
     if (live.length) {
         const DamageRoll = (CONFIG.Dice?.rolls ?? []).find((roll) => roll?.name === "DamageRoll");
@@ -157,6 +160,8 @@ async function applyRow(token, row, state) {
     if (row.persistent) await persistentDamage(actor, row.persistent.formula, row.persistent.type, token);
     for (const condition of row.conditions ?? []) await actor.increaseCondition?.(condition.slug);
     if (fall?.prone) await actor.increaseCondition?.("prone");
+    // (2026-10-26, for the item module: the fall done — an Impact Foam Chassis used up, its foam around the creature.)
+    if (fall) Hooks.callAll(`${MODULE_ID}.fell`, { token, feet: fallFeet, damage: fall.before, applied: fall.damage, reductions: fall.reductions });
     if (row.buried) await buryCreature(token, { snow: row.buried.snow, title: state.title, dc: state.check?.dc ?? 20, airless: Boolean(state.airless) });
     // (A failed Balance: back where its move started.)
     if (row.returnTo) await (token.document ?? token).update({ x: row.returnTo.x, y: row.returnTo.y, elevation: row.returnTo.elevation }, { teleport: true, animate: false, [MODULE_ID]: { forced: true } });
