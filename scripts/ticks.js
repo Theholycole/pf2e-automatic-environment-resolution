@@ -1,7 +1,8 @@
 // The weather as time passes (the active GM's client). In a fight: at the start of each turn, the damage that comes each round (a heavy
-// sandstorm, a wildfire's heat) and the wind's checks (a flier's Maneuver in Flight, a small creature's Athletics to move); at the end of
-// each turn, its air, the current's push, and a flier that found no footing in the wind blown away. On the world clock (PF2e and Foundry
-// advance it 6 seconds a round): temperature, hot ash, burial, lightning, travel fatigue — the user's choice, 2026-10-25.
+// sandstorm, a wildfire's heat) and a flier's Maneuver in Flight in the wind; at the end of each turn, its air, the current's push, and a
+// flier that found no footing in the wind blown away (a creature on the ground the wind troubles rolls Athletics as it first moves in a
+// round: scripts/wind.js). On the world clock (PF2e and Foundry advance it 6 seconds a round): temperature, hot ash, burial, lightning,
+// travel fatigue — the user's choice, 2026-10-25.
 
 import { FLAG, MODULE_ID, creatureOf, escapeHTML, isActiveGM, isCreature, livingTokens, noteToGM, sceneData, sceneState } from "./foundry.js";
 import { clockDamage, fatigueHours, lightningChances, turnStartDamage } from "../../pf2e-resolution-core/src/environment/ticks.js";
@@ -14,7 +15,6 @@ import { breathTurnEnd } from "./breath.js";
 import { pushToken } from "./movement.js";
 import { burialHits } from "./burial.js";
 
-const SIZE_PENALTY = { tiny: -2, sm: -1 };
 
 // PF2e's pf2e.startTurn and pf2e.endTurn (Foundry 14's combatTurnChange gives the new turn as the old one too), one at a time.
 // (The round a turn ends in: the one PF2e noted as it started, flags.pf2e.roundOfLastTurn.)
@@ -57,17 +57,8 @@ async function turnStart(combat, combatant, round) {
             wind: { combatantId: combatant.id, round, feet: weather.wind.blownFeet, direction: weather.wind.direction },
             notes: [`It must succeed at a Maneuver in Flight this turn, or be blown ${weather.wind.blownFeet} feet ${weather.wind.direction} at its end (at once on a critical failure). Flying is ${wind.flying === 3 ? "greater " : ""}difficult terrain.`]
         }, [token]);
-    } else if (wind.groundDC && !creature.flying && (!wind.groundSizes || wind.groundSizes.includes(creature.size))) {
-        const penalty = SIZE_PENALTY[creature.size];
-        await postCard({
-            key: "wind-ground",
-            title: `${wind.label}: moving against it`,
-            check: { statistic: "athletics", dc: weather.wind.groundDC, basic: false, ...(penalty ? { penalties: { t0: { value: penalty, label: "Size in the wind" } } } : {}) },
-            damage: [],
-            degrees: { criticalSuccess: {}, success: {}, failure: {}, criticalFailure: { pushed: { feet: 10, direction: weather.wind.direction }, conditions: [{ slug: "prone" }] } },
-            notes: ["Only if it moves this turn. Failure: it can't move this turn. Critical failure: knocked back 10 feet and prone."]
-        }, [token]);
     }
+    // (On the ground: the wind's Athletics when it first moves in a round — scripts/wind.js.)
 }
 
 async function turnEnd(combat, combatant, round) {

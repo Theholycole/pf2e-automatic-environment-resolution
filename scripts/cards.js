@@ -146,6 +146,8 @@ async function applyRow(token, row, state) {
     for (const condition of row.conditions ?? []) await actor.increaseCondition?.(condition.slug);
     if (row.falls || row.pickedUp) await actor.increaseCondition?.("prone");
     if (row.buried) await buryCreature(token, { snow: row.buried.snow, title: state.title, dc: state.check?.dc ?? 20, airless: Boolean(state.airless) });
+    // (A failed Balance: back where its move started.)
+    if (row.returnTo) await (token.document ?? token).update({ x: row.returnTo.x, y: row.returnTo.y, elevation: row.returnTo.elevation }, { teleport: true, animate: false, [MODULE_ID]: { forced: true } });
     if (row.carried) await pushToken(token, row.carried.feet, row.carried.direction);
     if (row.pushed) await pushToken(token, row.pushed.feet, row.pushed.direction);
     if (row.part) await partRegion(row.part);

@@ -58,6 +58,7 @@ The GM can change every number below in the window.
   - Windstorm: physical ranged attacks are impossible. Maneuver in Flight DC 30, blown 40 ft. Every creature needs Athletics DC 20 to move.
   - On a ground critical failure, the creature is knocked back 10 ft and falls prone.
   - Small creatures take −1 on these checks, Tiny creatures −2.
+  - In a fight, the ground check is asked when the creature first tries to move in a round (Foundry's preMoveToken stops the move and posts the card). A success lets it move for the rest of the round; a failure keeps it still that round. Only its own drags and key moves wait; pushes, teleports and other modules' moves don't.
 - **Thunderstorms:**
   - A thunderstorm raises the wind and rain to at least strong and heavy. A severe one raises them to severe and downpour.
   - Lightning: each exposed creature has a 1 in 200 chance each minute.
@@ -70,6 +71,7 @@ The GM can change every number below in the window.
   - Past a distance: the module rolls the DC 5 flat check on Strikes and spell attacks.
   - Everyone concealed: PF2e's condition is on each creature. The spell module rolls the flat check for spells, the module rolls it for Strikes.
   - An attacker with a precise sense other than sight (echolocation, tremorsense…) that reaches the target skips the check.
+  - Spells aimed at creatures (not areas, not spell attacks): the module rolls the weather's flat check for each target past the distance as the spell is cast. A miss goes into the spell module's own list of missed targets on the cast message (`targetMisses`), so the spell leaves that creature out. Targets PF2e already marks concealed or hidden are the spell module's to roll.
 - **Underwater:**
   - PF2e's own Effect: Aquatic Combat.
   - Murky water hides creatures beyond 10 ft (DC 11 flat check). Clear water hides them beyond 240 ft.
@@ -99,9 +101,10 @@ The GM can change every number below in the window.
   - Buried creatures are restrained, take minor damage each minute (and cold under snow), and can be dug out from a card.
 - **Terrain:**
   - Each feature gives PF2e's movement cost and environment types.
-  - Uneven ground and narrow surfaces: off-guard while on them, and a Balance card on entering.
+  - Uneven ground and narrow surfaces: off-guard while on them, and a Balance card for each move into or within them (not for a creature moved by force). A failure puts the creature back where its move started; a critical failure does that and leaves it prone.
   - Heavy undergrowth, hedges, large trees and canopy give standard cover inside.
-  - Hazards deal their damage on entering, or at the start of each turn inside.
+  - Hazards deal their damage for each move into or through them (once a move, not each square), or at the start of each turn inside.
+  - Stairs are difficult terrain only going up: the GM sets each stairs region's up direction, and a walking step with some of its way that direction costs double. (Foundry's region costs can't see direction, so the token's movement cost function is wrapped.) Enormous stairs stay greater difficult terrain both ways.
   - Flowing water pushes at the end of each turn.
   - Crowds can be parted with a check.
   - Sewer gas can be ignited.

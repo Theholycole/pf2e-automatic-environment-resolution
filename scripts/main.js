@@ -10,7 +10,10 @@ import { onAttackMessage } from "./attacks.js";
 import { bindCard, onRollMessage, postCard } from "./cards.js";
 import { onBreathMessage } from "./breath.js";
 import { onTurnEnd, onTurnStart, onWorldTime } from "./ticks.js";
-import { regionEvent, setRegionFeature, setSceneGround } from "./regions.js";
+import { migrateRegions, regionEvent, setRegionFeature, setSceneGround } from "./regions.js";
+import { installStairsCost } from "./stairs.js";
+import { windMoveGate } from "./wind.js";
+import { onSpellCast, targetFlatCheck } from "./spells.js";
 import { disasterCard } from "../../pf2e-resolution-core/src/environment/disasters.js";
 import { DAMAGE_CATEGORIES, setCategoryDefaults } from "../../pf2e-resolution-core/src/environment/catalog.js";
 import { creatureEffect, flatCheckFor, normalizeState } from "../../pf2e-resolution-core/src/environment/weather.js";
@@ -52,11 +55,19 @@ Hooks.once("ready", () => {
         setRegionFeature,
         setSceneGround,
         regionEvent,
+        // (For a spell's targeting: the weather's flat check between two tokens, { dc, why } or null — scripts/spells.js.)
+        targetFlatCheck,
         sync: syncScene,
         rules: Object.freeze({ creatureEffect, flatCheckFor, normalizeState })
     });
     if (isActiveGM() && canvas?.scene) syncScene(canvas.scene);
+    // (Stairs: their cost going up — every client measures movement.)
+    installStairsCost();
+    if (isActiveGM()) migrateRegions().catch((error) => console.warn(`${MODULE_ID} | updating regions:`, error));
 });
+
+// (A creature fighting the wind to move: its Athletics first — scripts/wind.js.)
+Hooks.on("preMoveToken", (token, movement, options) => windMoveGate(token, movement, options));
 
 Hooks.on("canvasReady", (canvas) => {
     if (isActiveGM()) syncScene(canvas.scene);
@@ -90,6 +101,7 @@ Hooks.on("createChatMessage", (message) => {
     onAttackMessage(message).catch((error) => console.error(`${MODULE_ID} |`, error));
     onRollMessage(message).catch((error) => console.error(`${MODULE_ID} |`, error));
     onBreathMessage(message).catch((error) => console.error(`${MODULE_ID} |`, error));
+    onSpellCast(message).catch((error) => console.error(`${MODULE_ID} |`, error));
 });
 Hooks.on("renderChatMessageHTML", (message, html) => bindCard(message, html));
 

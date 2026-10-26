@@ -38,3 +38,20 @@ test("the scene's state written out in full: a toggle switched off is null, a fi
     assert.equal(state.temperature, "normal");
     assert.equal(fullState({ fog: { beyond: 25 } }).fog, null, "no level: off");
 });
+
+test("a Balance card for a move: a failure back where the move started, a critical failure there and prone", async () => {
+    const { balanceCard } = await import("../scripts/regions.js");
+    const { featureRules } = await import("../../pf2e-resolution-core/src/environment/terrain.js");
+    const card = balanceCard(featureRules("ice"), { x: 300, y: 400, elevation: 0 });
+    assert.deepEqual(card.degrees.failure, { returnTo: { x: 300, y: 400, elevation: 0 } });
+    assert.deepEqual(card.degrees.criticalFailure.conditions, [{ slug: "prone" }]);
+    assert.deepEqual(balanceCard(featureRules("ice")).degrees.failure, {}, "no move to go back from");
+});
+
+test("the wind's card for a creature moving on the ground: its size's penalty, knocked back and prone on a critical failure", async () => {
+    const { windCard } = await import("../scripts/wind.js");
+    const card = windCard({ name: "Kobold" }, { wind: { label: "Windstorm" }, dc: 20, direction: "E", size: "sm" }, { combatantId: "c1", round: 2 });
+    assert.deepEqual(card.check.penalties.t0, { value: -1, label: "Size in the wind" });
+    assert.deepEqual(card.degrees.criticalFailure.pushed, { feet: 10, direction: "E" });
+    assert.deepEqual(card.groundWind, { combatantId: "c1", round: 2 });
+});

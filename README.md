@@ -86,4 +86,4 @@ See `docs/design.md` for the rulings where GM Core leaves numbers to the GM.
 
 Manifest URL: `https://github.com/Theholycole/pf2e-automatic-environment-resolution/releases/latest/download/module.json`
 
-It needs [PF2e Automation Core](https://github.com/Theholycole/PF2e-Automation-Core) 0.7.4 or later. GM Core's rules live there, so the [Combat Simulator](https://github.com/Theholycole/pf2e-combat-simulator) plays the same ones in its fights.
+It needs [PF2e Automation Core](https://github.com/Theholycole/PF2e-Automation-Core) 0.7.5 or later. GM Core's rules live there, so the [Combat Simulator](https://github.com/Theholycole/pf2e-combat-simulator) plays the same ones in its fights.

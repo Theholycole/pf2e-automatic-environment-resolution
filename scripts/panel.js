@@ -124,7 +124,8 @@ export class EnvironmentApp extends ApplicationV2 {
             const feature = regionFeature(region);
             const rules = feature ? featureRules(feature.key, { dc: feature.dc }) : null;
             const extra = [rules?.events.part ? `<button type="button" data-action="part" data-region="${region.id}">Part (selected)</button>` : "", rules?.events.explodes ? `<button type="button" data-action="ignite" data-region="${region.id}">Ignite</button>` : ""].join("");
-            const current = feature?.key === "current-water" ? `<label>Current <input type="number" step="5" name="region.${region.id}.feet" value="${feature.current?.feet ?? 10}" style="width:4em"> ft ${directionSelect(`region.${region.id}.direction`, feature.current?.direction ?? "S")}</label>` : "";
+            const current = feature?.key === "current-water" ? `<label>Current <input type="number" step="5" name="region.${region.id}.feet" value="${feature.current?.feet ?? 10}" style="width:4em"> ft ${directionSelect(`region.${region.id}.direction`, feature.current?.direction ?? "S")}</label>`
+                : FEATURES[feature?.key]?.upCost ? `<label title="The way up the stairs: difficult terrain only moving that way">Up toward ${directionSelect(`region.${region.id}.up`, feature.up ?? "N")}</label>` : "";
             return `<tr><td>${escapeHTML(region.name)}</td><td>${featureSelect(`region.${region.id}.key`, feature?.key)}</td><td><input type="number" name="region.${region.id}.dc" value="${feature?.dc ?? ""}" placeholder="DC" style="width:4em"></td><td>${current}<button type="button" data-action="regionFeature" data-region="${region.id}">Set</button>${extra}</td></tr>
                 ${rules ? `<tr><td></td><td colspan="3" class="hint">${escapeHTML(rules.summary.join(" "))}</td></tr>` : ""}`;
         }).join("");
@@ -226,7 +227,7 @@ export class EnvironmentApp extends ApplicationV2 {
         const id = region.id;
         const key = this.#value(`region.${id}.key`);
         const current = key === "current-water" ? { feet: Number(this.#value(`region.${id}.feet`)) || 10, direction: this.#value(`region.${id}.direction`) ?? "S" } : null;
-        await setRegionFeature(region, key, { dc: this.#value(`region.${id}.dc`), current });
+        await setRegionFeature(region, key, { dc: this.#value(`region.${id}.dc`), current, up: this.#value(`region.${id}.up`) });
         this.render();
     }
 

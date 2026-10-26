@@ -36,7 +36,7 @@
         "reason": "GM Core's environment rules live in the core, shared with the Combat Simulator; its forced movement moves creatures.",
         "manifest": "https://github.com/Theholycole/PF2e-Automation-Core/releases/latest/download/module.json",
         "compatibility": {
-          "minimum": "0.7.4"
+          "minimum": "0.7.5"
         }
       }
     ]
