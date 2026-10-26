@@ -7,7 +7,7 @@
 import { FLAG, MODULE_ID, creatureOf, escapeHTML, isActiveGM, isCreature, livingTokens, noteToGM, sceneData, sceneState } from "./foundry.js";
 import { clockDamage, fatigueHours, lightningChances, turnStartDamage } from "../../pf2e-resolution-core/src/environment/ticks.js";
 import { categoryDice, levelOf } from "../../pf2e-resolution-core/src/environment/catalog.js";
-import { effectiveWeather } from "../../pf2e-resolution-core/src/environment/weather.js";
+import { effectiveWeather, ignoresWeather } from "../../pf2e-resolution-core/src/environment/weather.js";
 import { disasterCard } from "../../pf2e-resolution-core/src/environment/disasters.js";
 import { applyCard, cardOf, hitTokens, postCard } from "./cards.js";
 import { syncToken } from "./sync.js";
@@ -47,7 +47,7 @@ async function turnStart(combat, combatant, round) {
     const weather = effectiveWeather(state);
     const wind = weather.wind ? levelOf("wind", weather.wind.level) : null;
     if (!wind || creature.sheltered) return;
-    if (wind.flightDC && creature.flying) {
+    if (wind.flightDC && creature.flying && !ignoresWeather(creature, "wind-movement")) {
         await postCard({
             key: "wind-flight",
             title: `${wind.label}: Maneuver in Flight`,
@@ -73,7 +73,7 @@ async function turnEnd(combat, combatant, round) {
     // (The wind's card for this turn: no success, and still aloft — blown away.)
     const card = game.messages.contents.findLast((message) => cardOf(message)?.wind?.combatantId === combatant.id && cardOf(message).wind.round === round);
     const wind = cardOf(card);
-    if (wind && creatureOf(token, scene).flying && !["success", "criticalSuccess"].includes(wind.targets[0]?.degree) && !wind.targets[0]?.applied) {
+    if (wind && creature.flying && !ignoresWeather(creature, "wind-movement") && !["success", "criticalSuccess"].includes(wind.targets[0]?.degree) && !wind.targets[0]?.applied) {
         const moved = await pushToken(token, wind.wind.feet, wind.wind.direction);
         await card.update({ [`flags.${MODULE_ID}.card.targets`]: wind.targets.map((target) => ({ ...target, applied: true })) });
         await noteToGM(`<p>${escapeHTML(token.name)} ${moved ? `is blown ${wind.wind.feet} feet ${wind.wind.direction}` : `would be blown ${wind.wind.feet} feet ${wind.wind.direction}, but something stops it`}.</p>`, { title: "Wind" });

@@ -85,7 +85,7 @@ Hooks.on("updateScene", (scene, change) => {
 });
 
 // (A protection put on or taken off — an elixir's Effect, a parka worn: its tokens' weather Effects say so. The damage reads them live.)
-const protects = (item, change = null) => Boolean(item?.flags?.[MODULE_ID]?.temperature) || (item?.isOfType?.("physical") && (!change || foundry.utils.hasProperty(change, "system.equipped")));
+const protects = (item, change = null) => Boolean(item?.flags?.[MODULE_ID]?.temperature || item?.flags?.[MODULE_ID]?.weatherIgnores) || (item?.isOfType?.("physical") && (!change || foundry.utils.hasProperty(change, "system.equipped")));
 const resyncActor = (actor) => {
     if (!isActiveGM() || !actor) return;
     for (const token of actor.getActiveTokens?.(false, true) ?? []) syncToken(token);

@@ -5,7 +5,7 @@
 // and prone (the card's Apply). Its own drags and keys only — a push, a teleport or another module's move isn't stopped.
 
 import { creatureOf, isCreature, sceneState } from "./foundry.js";
-import { effectiveWeather } from "../../pf2e-resolution-core/src/environment/weather.js";
+import { effectiveWeather, ignoresWeather } from "../../pf2e-resolution-core/src/environment/weather.js";
 import { levelOf } from "../../pf2e-resolution-core/src/environment/catalog.js";
 import { cardOf, postCard } from "./cards.js";
 
@@ -20,7 +20,7 @@ export function groundWind(tokenDoc) {
     const wind = weather.wind ? levelOf("wind", weather.wind.level) : null;
     if (!wind?.groundDC) return null;
     const creature = creatureOf(tokenDoc);
-    if (!creature || creature.flying || creature.sheltered || (wind.groundSizes && !wind.groundSizes.includes(creature.size))) return null;
+    if (!creature || creature.flying || creature.sheltered || ignoresWeather(creature, "wind-movement") || (wind.groundSizes && !wind.groundSizes.includes(creature.size))) return null;
     return { wind, dc: weather.wind.groundDC, direction: weather.wind.direction, size: creature.size };
 }
 

@@ -80,3 +80,12 @@ test("what eases a creature's falls: its Effects' fall flags that haven't run ou
     assert.deepEqual(fallEasesOf(actor).map((entry) => entry.source), ["Tumbler's Belt", "Gliding Membranes", "Cat"]);
     globalThis.game.modules = new Map();
 });
+
+test("what of the weather a creature ignores: its Effects' weatherIgnores flags (not the module's own weather mark) and the item module's api", async () => {
+    const { weatherIgnoresOf } = await import("../scripts/foundry.js");
+    const flag = (value) => ({ flags: { "pf2e-automatic-environment-resolution": value } });
+    const actor = { itemTypes: { effect: [flag({ weatherIgnores: { ignores: ["fog-mist"], source: "Ixamè's Eye" } }), flag({ weather: true }), flag({ weatherIgnores: { source: "no keys" } })] } };
+    globalThis.game.modules = new Map([["pf2e-automatic-item-resolution", { active: true, api: { weatherIgnores: () => [{ ignores: ["sight", "concealment", "wind-movement"], source: "Cape of the Open Sky" }] } }]]);
+    assert.deepEqual(weatherIgnoresOf(actor).map((entry) => entry.source), ["Ixamè's Eye", "Cape of the Open Sky"]);
+    globalThis.game.modules = new Map();
+});

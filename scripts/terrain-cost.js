@@ -8,7 +8,8 @@
 //   the ones for every environment and feature itself —; the step costs as if that region's difficulty weren't there (greater difficult
 //   terrain as difficult, when only difficult terrain is ignored), the rest of the square's difficulty and PF2e's own ignoring as ever.
 
-import { MODULE_ID } from "./foundry.js";
+import { MODULE_ID, sceneState, weatherIgnoresOf } from "./foundry.js";
+import { ignoresWeather, sceneMovementCosts } from "../../pf2e-resolution-core/src/environment/weather.js";
 import { goesUp, ignoresFeature } from "../../pf2e-resolution-core/src/environment/terrain.js";
 import { FEATURES } from "../../pf2e-resolution-core/src/environment/catalog.js";
 
@@ -48,12 +49,19 @@ export function installTerrainCost() {
         const base = original.call(this, token, options);
         const scene = token?.parent;
         const terrain = costlyTerrain(scene);
-        if (!terrain.length || !scene?.grid) return base;
+        // (Flying through the wind, for one the weather doesn't touch — a Cape of the Open Sky: the scene's wind out of its cost.)
+        const windFly = scene && ignoresWeather({ weatherIgnores: weatherIgnoresOf(token.actor) }, "wind-movement") ? sceneMovementCosts(sceneState(scene)).fly ?? null : null;
+        if ((!terrain.length && !windFly) || !scene?.grid) return base;
         const ignored = ignoredOf(token.actor);
         const square = scene.grid.isSquare ?? canvas?.grid?.isSquare;
         return (from, to, distance, segment) => {
             let cost = typeof base === "function" ? base(from, to, distance, segment) : distance;
-            if (segment?.teleport || segment?.action !== "walk") return cost;
+            if (segment?.teleport) return cost;
+            if (segment?.action === "fly" && windFly && square) {
+                const difficulty = Math.clamp(Math.round(Math.clamp(Math.trunc(segment?.terrain?.difficulty ?? 1), 1, 3) / windFly), 1, 3);
+                return distance + (difficulty - 1) * scene.grid.distance * pf2eShare(ignored, difficulty);
+            }
+            if (segment?.action !== "walk" || !terrain.length) return cost;
             const point = scene.grid.getCenterPoint({ i: to.i, j: to.j });
             const at = { ...point, elevation: Number(token.elevation) || 0 };
             const here = terrain.filter((entry) => entry.region.testPoint(at));

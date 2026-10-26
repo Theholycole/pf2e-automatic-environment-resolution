@@ -84,6 +84,25 @@ export function protectionsOf(actor, { temperature = null } = {}) {
     return [...fromEffects, ...fromItems];
 }
 
+// (2026-10-26, with the item module's session.) What of the weather it ignores (the core's weather.js ignoresWeather): [{ ignores: [keys],
+// source, weapon?, windUpTo? }], from its Effects that haven't run out with flags[MODULE_ID].weatherIgnores (Ixamè's Eye's minute) — not
+// "weather", the module's own Effects' mark —, and from the item module's api.weatherIgnores(actor) for what it wears or wields (a Cape of
+// the Open Sky, Wintershot).
+export function weatherIgnoresOf(actor) {
+    const fromEffects = (actor?.itemTypes?.effect ?? []).filter((effect) => !(effect.isExpired ?? effect.system?.expired)).map((effect) => effect.flags?.[MODULE_ID]?.weatherIgnores).filter((entry) => Array.isArray(entry?.ignores));
+    let fromItems = [];
+    const api = game.modules.get(ITEM_ID)?.active ? game.modules.get(ITEM_ID)?.api : null;
+    if (typeof api?.weatherIgnores === "function") {
+        try {
+            const read = api.weatherIgnores(actor);
+            fromItems = Array.isArray(read) ? read.filter((entry) => Array.isArray(entry?.ignores)) : [];
+        } catch (error) {
+            console.warn(`${MODULE_ID} | ${ITEM_ID}'s weather ignores for ${actor?.name}:`, error);
+        }
+    }
+    return [...fromEffects, ...fromItems];
+}
+
 // (2026-10-25/26, with the item module's session.) What eases its falls: [{ shorter?: feet, noDamage?: true, landsOnFeet?: true, source }],
 // from its Effects that haven't run out with flags[MODULE_ID].fall (a Tumbler's Belt's reaction, a Dragonaut's Wingsuit's minute), and from
 // the item module's api.fallEases(actor) for what it wears or invests (Gliding Membranes, Soft-Landing).
@@ -127,6 +146,7 @@ export function creatureOf(token, scene = token?.parent) {
             endurance: slugs.some((slug) => /environmental-endurance/.test(slug)) || names.some((name) => /environmental endurance/.test(name))
         },
         protections: protectionsOf(actor, { temperature: sceneState(scene).temperature }),
+        weatherIgnores: weatherIgnoresOf(actor),
         sheltered: sceneData(scene).sheltered.includes(token.id),
         buriedAirless: (actor.itemTypes?.effect ?? []).some((effect) => effect.flags?.[MODULE_ID]?.buried?.airless)
     };

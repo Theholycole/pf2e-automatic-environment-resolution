@@ -45,8 +45,8 @@ The GM can change every number below in the window.
   - Light: none.
   - Steady: −1.
   - Heavy: −2, beyond 120 ft.
-  - Downpour: −3, beyond 60 ft.
-  - Deluge: −4, beyond 30 ft.
+  - Very heavy (a downpour, heavy snow): −3, beyond 60 ft.
+  - Torrential (a deluge, a whiteout): −4, beyond 30 ft.
 - **Precipitation kinds:**
   - Hail penalizes hearing instead of sight and doesn't conceal.
   - Snow Vision ignores falling snow.
@@ -72,6 +72,15 @@ The GM can change every number below in the window.
   - Everyone concealed: PF2e's condition is on each creature. The spell module rolls the flat check for spells, the module rolls it for Strikes.
   - An attacker with a precise sense other than sight (echolocation, tremorsense…) that reaches the target skips the check.
   - Spells aimed at creatures (not areas, not spell attacks): the module rolls the weather's flat check for each target past the distance as the spell is cast. A miss goes into the spell module's own list of missed targets on the cast message (`targetMisses`), so the spell leaves that creature out. Targets PF2e already marks concealed or hidden are the spell module's to roll.
+- **Items that ignore part of the weather** (from the item module): `flags["pf2e-automatic-environment-resolution"].weatherIgnores = { ignores: [keys], source, weapon?, windUpTo? }` on an Effect (Ixamè's Eye), or `api.weatherIgnores(actor)` for worn and wielded items (a Cape of the Open Sky, Wintershot). The key is `weatherIgnores`, not `weather`, which marks the module's own Effects. Keys:
+  - `sight`: no sight penalty.
+  - `fog-mist`: fog's sight penalty and concealment don't apply to it.
+  - `precipitation`: rain and snow don't conceal its targets.
+  - `concealment`: no weather concealment for it as the viewer.
+  - `wind-ranged`: no wind penalty on its ranged Strikes, up to `windUpTo` when given.
+  - `wind-movement`: no wind checks, no blowing away, and no wind cost on its flying.
+  - With `weapon` (an item id), the entry counts only for that weapon's Strikes.
+  - PF2e's concealed condition in pea-soup fog still makes the spell module roll for spells; the module's own flat checks (Strikes, spell attacks, spells at a distance) follow the ignores.
 - **Underwater:**
   - PF2e's own Effect: Aquatic Combat.
   - Murky water hides creatures beyond 10 ft (DC 11 flat check). Clear water hides them beyond 240 ft.

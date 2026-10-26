@@ -29,7 +29,8 @@ export async function onAttackMessage(message) {
         // (A target PF2e's concealed condition already marks: the spell module rolls a spell's flat check; a Strike's is rolled here. Its
         // weather's own concealment past a distance: rolled here for both.)
         const concealedByWeather = (target.actor?.itemTypes?.condition ?? []).some((condition) => condition.slug === "concealed" && condition.flags?.pf2e?.grantedBy && target.actor.items.get(condition.flags.pf2e.grantedBy.id)?.flags?.[MODULE_ID]?.weather);
-        const check = flatCheckFor(state, { attacker: creatureOf(attacker), target: creatureOf(target), distance: distanceBetween(attacker, target) });
+        // (The Strike's weapon: one that ignores some of the weather's concealment — Wintershot.)
+        const check = flatCheckFor(state, { attacker: creatureOf(attacker), target: creatureOf(target), distance: distanceBetween(attacker, target), weapon: message.item?.id ?? null });
         const strike = context.type === "attack-roll";
         // (A miss needs no flat check.)
         const missed = ["failure", "criticalFailure"].includes(context.outcome);
