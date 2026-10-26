@@ -84,6 +84,16 @@ Hooks.on("updateScene", (scene, change) => {
     syncScene(scene);
 });
 
+// (A protection put on or taken off — an elixir's Effect, a parka worn: its tokens' weather Effects say so. The damage reads them live.)
+const protects = (item, change = null) => Boolean(item?.flags?.[MODULE_ID]?.temperature) || (item?.isOfType?.("physical") && (!change || foundry.utils.hasProperty(change, "system.equipped")));
+const resyncActor = (actor) => {
+    if (!isActiveGM() || !actor) return;
+    for (const token of actor.getActiveTokens?.(false, true) ?? []) syncToken(token);
+};
+Hooks.on("createItem", (item) => protects(item) && resyncActor(item.parent));
+Hooks.on("deleteItem", (item) => protects(item) && resyncActor(item.parent));
+Hooks.on("updateItem", (item, change) => protects(item, change) && resyncActor(item.parent));
+
 Hooks.on("createToken", (token) => {
     if (isActiveGM()) syncToken(token);
 });

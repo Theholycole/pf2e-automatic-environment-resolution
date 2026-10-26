@@ -109,7 +109,7 @@ export class EnvironmentApp extends ApplicationV2 {
                 <div class="pf2e-env-row"><select name="temperature">${TEMPERATURES.map((entry) => option(entry.key, entry.label, state.temperature)).join("")}</select>
                 <label>or <input type="number" name="fahrenheit" placeholder="°F" style="width:5em"></label><label><input type="checkbox" name="humid"> Humid</label>
                 <button type="button" data-action="fahrenheit">Set from °F</button></div>
-                <p class="hint">Cold-weather clothing and Environmental Endurance are counted. Sheltered creatures feel none of it.</p>
+                <p class="hint">Cold-weather clothing, Environmental Endurance and the item module's protections (a Cooling Elixir, a Warming Parka…) are counted. Sheltered creatures feel none of it.</p>
             </fieldset>
             <fieldset class="pf2e-env-toggle ${state.travel?.on ? "on" : ""}"><legend><label><input type="checkbox" name="travel.on"${state.travel?.on ? " checked" : ""}> Travelling (fatigue)</label></legend>
                 <p class="hint">The party becomes fatigued after the hours the temperature and precipitation allow, counted on the world clock from now.</p></fieldset>

@@ -55,3 +55,18 @@ test("the wind's card for a creature moving on the ground: its size's penalty, k
     assert.deepEqual(card.degrees.criticalFailure.pushed, { feet: 10, direction: "E" });
     assert.deepEqual(card.groundWind, { combatantId: "c1", round: 2 });
 });
+
+test("a creature's temperature protections: its Effects' flags (not run out) and the item module's api", async () => {
+    const { protectionsOf } = await import("../scripts/foundry.js");
+    const flag = (temperature, extra = {}) => ({ flags: { "pf2e-automatic-environment-resolution": { temperature } }, ...extra });
+    const actor = { name: "Ezren", itemTypes: { effect: [flag({ counts: { "severe-heat": "mild-heat" }, source: "Cooling Elixir" }), flag({ counts: { "extreme-cold": "severe-cold" }, source: "Rime Jar" }, { isExpired: true }), { flags: {} }] } };
+    globalThis.game.modules = new Map([["pf2e-automatic-item-resolution", { active: true, api: { temperatureProtections: () => [{ counts: { "severe-cold": "normal" }, source: "Warming Parka" }, { source: "no counts" }] } }]]);
+    assert.deepEqual(protectionsOf(actor).map((entry) => entry.source), ["Cooling Elixir", "Warming Parka"]);
+    globalThis.game.modules = new Map([["pf2e-automatic-item-resolution", { active: true, api: { temperatureProtections: () => { throw new Error("boom"); } } }]]);
+    const warn = console.warn;
+    console.warn = () => {};
+    assert.deepEqual(protectionsOf(actor).map((entry) => entry.source), ["Cooling Elixir"]);
+    console.warn = warn;
+    globalThis.game.modules = new Map();
+    assert.equal(protectionsOf(actor).length, 1);
+});

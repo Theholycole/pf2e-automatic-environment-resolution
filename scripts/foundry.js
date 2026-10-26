@@ -65,6 +65,25 @@ function sensesOf(actor) {
 const namesOf = (actor) => [...(actor?.items ?? [])].map((item) => String(item.name ?? "").toLowerCase());
 const slugsOf = (actor) => [...(actor?.items ?? [])].map((item) => item.slug ?? item.system?.slug ?? "");
 
+// (2026-10-25, with the item module's session, on the user's word to it: items that protect from the temperature.) Its protections, in
+// the core's shape [{ counts: { felt key: the key it counts as }, fatigueHours?, source }]: from its Effects that haven't run out (a
+// Cooling Elixir's, a Rime Jar's — flags[MODULE_ID].temperature), and from the item module's api for what it wears, invests or holds.
+const ITEM_ID = "pf2e-automatic-item-resolution";
+export function protectionsOf(actor) {
+    const fromEffects = (actor?.itemTypes?.effect ?? []).filter((effect) => !(effect.isExpired ?? effect.system?.expired)).map((effect) => effect.flags?.[MODULE_ID]?.temperature).filter((entry) => entry?.counts);
+    let fromItems = [];
+    const api = game.modules.get(ITEM_ID)?.active ? game.modules.get(ITEM_ID)?.api : null;
+    if (typeof api?.temperatureProtections === "function") {
+        try {
+            const read = api.temperatureProtections(actor);
+            fromItems = Array.isArray(read) ? read.filter((entry) => entry?.counts) : [];
+        } catch (error) {
+            console.warn(`${MODULE_ID} | ${ITEM_ID}'s temperature protections for ${actor?.name}:`, error);
+        }
+    }
+    return [...fromEffects, ...fromItems];
+}
+
 // The creature as the rules see it.
 export function creatureOf(token, scene = token?.parent) {
     const actor = token?.actor;
@@ -88,6 +107,7 @@ export function creatureOf(token, scene = token?.parent) {
             coldWeather: worn.some((item) => (item.slug ?? item.system?.slug) === "clothing-cold-weather" || /cold-weather|winter clothing/i.test(item.name)),
             endurance: slugs.some((slug) => /environmental-endurance/.test(slug)) || names.some((name) => /environmental endurance/.test(name))
         },
+        protections: protectionsOf(actor),
         sheltered: sceneData(scene).sheltered.includes(token.id),
         buriedAirless: (actor.itemTypes?.effect ?? []).some((effect) => effect.flags?.[MODULE_ID]?.buried?.airless)
     };

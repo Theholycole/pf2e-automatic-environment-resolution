@@ -85,6 +85,7 @@ The GM can change every number below in the window.
   - Cold-weather clothing removes severe cold and makes extreme cold count as severe.
   - Environmental Endurance removes severe and extreme cold and heat.
   - Sheltered creatures, ticked in the window, feel none of it.
+  - Items that protect from the temperature come from the item module, in one shape: `{ counts: { felt key: the key it counts as }, fatigueHours?, source }`. A consumable's or an activation's comes as a flag on the Effect it gives (`flags["pf2e-automatic-environment-resolution"].temperature`). A worn, invested or held item's comes from `game.modules.get("pf2e-automatic-item-resolution").api.temperatureProtections(actor)`. Soaking applies first, then the mildest of the gear, Environmental Endurance and each protection; protections don't chain. A protection's `fatigueHours` is added to the travel fatigue hours, the largest one only.
 - **Clock damage:** each kind of damage is rolled once for all the creatures it hits, the way area damage is. A jump of more than an hour (a setting) is posted for the GM to apply.
 - **Travel fatigue:** with "Travelling" on, the PCs become fatigued after the hours the temperature and precipitation allow, once per journey.
 - **Disasters:**
