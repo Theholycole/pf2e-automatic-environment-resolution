@@ -2,7 +2,7 @@
 // Remaining Air for those who must hold their breath; and the scene-wide region for what the weather does to movement (wind on fliers)
 // and the environment types it adds (aquatic underwater). Run on the active GM's client.
 
-import { MODULE_ID, creatureOf, isActiveGM, sceneState } from "./foundry.js";
+import { MODULE_ID, creatureOf, isActiveGM, isCreature, sceneState } from "./foundry.js";
 import { REMAINING_AIR, breathlessIn, creatureEffect, effectiveWeather, sceneMovementCosts } from "../../pf2e-resolution-core/src/environment/weather.js";
 
 const ICON = "icons/magic/air/wind-weather-sailing-ship.webp";
@@ -31,7 +31,7 @@ function effectData(effect, sceneId) {
 // One token's weather Effect: made, remade when it changed, removed when the weather does nothing to it.
 export async function syncToken(token, state = sceneState(token.parent)) {
     const actor = token?.actor;
-    if (!actor || !isActiveGM()) return;
+    if (!isCreature(actor) || !isActiveGM()) return;
     const creature = creatureOf(token);
     const effect = creatureEffect(state, creature);
     const held = ours(actor, WEATHER_FLAG);

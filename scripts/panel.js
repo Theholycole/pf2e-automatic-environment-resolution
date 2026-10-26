@@ -9,7 +9,7 @@ import { creatureEffect, normalizeState } from "../../pf2e-resolution-core/src/e
 import { igniteGas, partCrowd, regionFeature, sceneGround, setRegionFeature, setSceneGround } from "./regions.js";
 import { postCard } from "./cards.js";
 import { buriedEffectOf, digCard, freeCreature } from "./burial.js";
-import { creatureOf } from "./foundry.js";
+import { creatureOf, isCreature } from "./foundry.js";
 
 const { ApplicationV2 } = foundry.applications.api;
 
@@ -98,7 +98,7 @@ export class EnvironmentApp extends ApplicationV2 {
                 <p class="hint">${escapeHTML(entry.text ?? "")}</p>
             </fieldset>`;
         }).join("");
-        const tokens = [...this.scene.tokens].filter((token) => token.actor);
+        const tokens = [...this.scene.tokens].filter((token) => isCreature(token.actor));
         const sheltered = new Set(data.sheltered);
         const preview = tokens.slice(0, 40).map((token) => {
             const effect = creatureEffect(state, creatureOf(token, this.scene));

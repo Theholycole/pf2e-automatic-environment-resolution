@@ -52,6 +52,15 @@ export function cardHTML(state) {
 export function bindCard(message, html) {
     const state = cardOf(message);
     if (!state) return;
+    // (A player sees the Roll buttons of the creatures they own, and no Apply.)
+    if (!game.user.isGM) {
+        html.querySelectorAll('[data-env-action="apply"]').forEach((button) => button.remove());
+        for (const button of html.querySelectorAll('[data-env-action="roll"]')) {
+            const target = state.targets.find((entry) => entry.id === button.dataset.target);
+            const actor = target ? fromUuidSync(target.actorUuid) : null;
+            if (!actor?.isOwner) button.replaceWith(document.createTextNode("…"));
+        }
+    }
     html.querySelectorAll("[data-env-action]").forEach((button) => button.addEventListener("click", async (event) => {
         event.preventDefault();
         button.disabled = true;
@@ -133,7 +142,7 @@ async function applyRow(token, row, state) {
         const roll = await new DamageRoll(live.length === 1 ? live[0] : `{${live.join(",")}}`).evaluate();
         await actor.applyDamage({ damage: roll, token });
     }
-    if (row.persistent) await persistentDamage(actor, row.persistent.formula, row.persistent.type);
+    if (row.persistent) await persistentDamage(actor, row.persistent.formula, row.persistent.type, token);
     for (const condition of row.conditions ?? []) await actor.increaseCondition?.(condition.slug);
     if (row.falls || row.pickedUp) await actor.increaseCondition?.("prone");
     if (row.buried) await buryCreature(token, { snow: row.buried.snow, title: state.title, dc: state.check?.dc ?? 20, airless: Boolean(state.airless) });
@@ -148,7 +157,13 @@ async function applyRow(token, row, state) {
     if (row.dies) {
         await actor.update({ "system.attributes.hp.value": 0 });
         if (actor.type === "character") await actor.increaseCondition?.("dying", { value: Number(actor.system?.attributes?.dying?.max) || 4 });
-        else if (token.combatant) await token.combatant.update({ defeated: true });
+        if (token.combatant) await token.combatant.update({ defeated: true });
+        // (PF2e's dead marker on the token, a character's too.)
+        try {
+            await actor.toggleStatusEffect?.("dead", { active: true, overlay: true });
+        } catch (error) {
+            console.warn(`${MODULE_ID} | the dead marker on ${actor.name}:`, error);
+        }
     }
 }
 

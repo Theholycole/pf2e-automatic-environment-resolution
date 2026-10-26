@@ -107,17 +107,21 @@ export async function dealDamage(token, formula, type, { label = "Environment", 
     return roll;
 }
 
-// A persistent damage condition on the creature.
-export async function persistentDamage(actor, formula, type) {
-    const condition = game.pf2e?.ConditionManager?.getCondition?.("persistent-damage")?.toObject?.();
-    if (!condition) return;
-    condition.system.persistent = { formula, damageType: type, dc: 15 };
-    await actor.createEmbeddedDocuments("Item", [condition]);
+// A persistent damage condition on the creature: PF2e's own, from a persistent damage roll applied (as the ability module's cards give it).
+export async function persistentDamage(actor, formula, type, token = null) {
+    const DamageRoll = damageRollClass();
+    if (!actor || !DamageRoll || !formula) return;
+    const roll = await new DamageRoll(`(${formula})[persistent,${type}]`).evaluate();
+    await actor.applyDamage({ damage: roll, token: token?.document ?? token ?? undefined });
 }
 
-// Tokens on a scene with an actor and hit points (the dead and defeated left out).
+// (2026-10-25: creatures only — PF2e's loot actors can't hold an Effect, and the weather has nothing for a trap.)
+const CREATURES = new Set(["character", "npc", "familiar"]);
+export const isCreature = (actor) => CREATURES.has(actor?.type);
+
+// Creatures on a scene with hit points (the dead and defeated left out).
 export function livingTokens(scene) {
-    return [...(scene?.tokens ?? [])].filter((token) => token.actor && Number(token.actor.system?.attributes?.hp?.max) > 0 && !token.combatant?.defeated && !token.actor.isDead);
+    return [...(scene?.tokens ?? [])].filter((token) => isCreature(token.actor) && Number(token.actor.system?.attributes?.hp?.max) > 0 && !token.combatant?.defeated && !token.actor.isDead);
 }
 
 // The distance between two tokens, PF2e's way (feet).

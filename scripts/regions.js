@@ -2,7 +2,7 @@
 // The region gets PF2e's movement costs and environment types, and a script behavior whose events come here: the Effect a creature holds
 // while inside (off-guard on uneven ground or a narrow surface, cover), Balance on entering, hazard damage, a current's push.
 
-import { MODULE_ID, creatureOf, isActiveGM, persistentDamage } from "./foundry.js";
+import { MODULE_ID, creatureOf, isActiveGM, isCreature, persistentDamage } from "./foundry.js";
 import { featureRules } from "../../pf2e-resolution-core/src/environment/terrain.js";
 import { FEATURES } from "../../pf2e-resolution-core/src/environment/catalog.js";
 import { disasterCard } from "../../pf2e-resolution-core/src/environment/disasters.js";
@@ -73,7 +73,7 @@ export async function regionEvent(region, behavior, event) {
     if (!isActiveGM()) return;
     const terrain = regionFeature(region);
     const token = event?.data?.token;
-    if (!terrain || !token?.actor) return;
+    if (!terrain || !isCreature(token?.actor)) return;
     const rules = featureRules(terrain.key, { dc: terrain.dc });
     if (!rules) return;
     const creature = creatureOf(token);
@@ -104,7 +104,7 @@ export async function regionEvent(region, behavior, event) {
 async function hazardHit(token, rules) {
     const hazard = rules.events.hazard;
     await hitTokens([token], { formula: hazard.formula, type: hazard.type, label: rules.label });
-    if (hazard.persistent) await persistentDamage(token.actor, hazard.persistent.formula, hazard.persistent.type);
+    if (hazard.persistent) await persistentDamage(token.actor, hazard.persistent.formula, hazard.persistent.type, token);
 }
 
 export function balanceCard(rules) {

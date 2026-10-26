@@ -3,7 +3,7 @@
 // each turn, its air, the current's push, and a flier that found no footing in the wind blown away. On the world clock (PF2e and Foundry
 // advance it 6 seconds a round): temperature, hot ash, burial, lightning, travel fatigue — the user's choice, 2026-10-25.
 
-import { FLAG, MODULE_ID, creatureOf, escapeHTML, isActiveGM, livingTokens, noteToGM, sceneData, sceneState } from "./foundry.js";
+import { FLAG, MODULE_ID, creatureOf, escapeHTML, isActiveGM, isCreature, livingTokens, noteToGM, sceneData, sceneState } from "./foundry.js";
 import { clockDamage, fatigueHours, lightningChances, turnStartDamage } from "../../pf2e-resolution-core/src/environment/ticks.js";
 import { categoryDice, levelOf } from "../../pf2e-resolution-core/src/environment/catalog.js";
 import { effectiveWeather } from "../../pf2e-resolution-core/src/environment/weather.js";
@@ -38,7 +38,7 @@ async function safely(run) {
 async function turnStart(combat, combatant, round) {
     const token = combatant.token;
     const scene = token?.parent;
-    if (!token?.actor || !scene || combatant.defeated) return;
+    if (!isCreature(token?.actor) || !scene || combatant.defeated) return;
     const state = sceneState(scene);
     await syncToken(token, state);
     const creature = creatureOf(token, scene);
@@ -73,7 +73,7 @@ async function turnStart(combat, combatant, round) {
 async function turnEnd(combat, combatant, round) {
     const token = combatant.token;
     const scene = token?.parent;
-    if (!token?.actor || !scene) return;
+    if (!isCreature(token?.actor) || !scene) return;
     await breathTurnEnd(token);
     const state = sceneState(scene);
     const weather = effectiveWeather(state);
@@ -147,7 +147,7 @@ async function strike(token, chance) {
     if (!card.check && message) await applyCard(message);
 }
 
-// On a journey, fatigued after the hours the weather allows (the PCs; once each journey).
+// On a journey, fatigued after the hours the weather allows (the PCs — characters, however they're owned; once each journey).
 async function travelFatigue(scene, state, now) {
     if (!state.travel?.on) return;
     const data = sceneData(scene);
@@ -155,7 +155,7 @@ async function travelFatigue(scene, state, now) {
     const hours = (now - state.travel.since) / 3600;
     const fresh = [];
     for (const token of livingTokens(scene)) {
-        if (!token.actor.hasPlayerOwner || done.has(token.id)) continue;
+        if (token.actor.type !== "character" || done.has(token.id)) continue;
         if (hours < fatigueHours(state, creatureOf(token, scene))) continue;
         await token.actor.increaseCondition?.("fatigued");
         fresh.push(token);
