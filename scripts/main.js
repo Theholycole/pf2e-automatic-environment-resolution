@@ -93,6 +93,18 @@ const resyncActor = (actor) => {
 Hooks.on("createItem", (item) => protects(item) && resyncActor(item.parent));
 Hooks.on("deleteItem", (item) => protects(item) && resyncActor(item.parent));
 Hooks.on("updateItem", (item, change) => protects(item, change) && resyncActor(item.parent));
+// (An ally's banner or another aura that protects: its reach changes as tokens move — the scene's creatures looked at again once the
+// moves settle, when it has a temperature and the item module is there. Unchanged Effects aren't rewritten.)
+const resyncing = new Map();
+Hooks.on("moveToken", (token) => {
+    const scene = token?.parent;
+    if (!isActiveGM() || !scene || !game.modules.get("pf2e-automatic-item-resolution")?.active || sceneState(scene).temperature === "normal") return;
+    clearTimeout(resyncing.get(scene.id));
+    resyncing.set(scene.id, setTimeout(() => {
+        resyncing.delete(scene.id);
+        syncScene(scene);
+    }, 750));
+});
 
 Hooks.on("createToken", (token) => {
     if (isActiveGM()) syncToken(token);
