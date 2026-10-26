@@ -84,10 +84,23 @@ export function protectionsOf(actor, { temperature = null } = {}) {
     return [...fromEffects, ...fromItems];
 }
 
-// (2026-10-25, with the item module's session.) What eases its falls: [{ shorter?: feet, noDamage?: true, source }], from its Effects that
-// haven't run out with flags[MODULE_ID].fall (a Tumbler's Belt's reaction, a Dragonaut's Wingsuit's minute).
+// (2026-10-25/26, with the item module's session.) What eases its falls: [{ shorter?: feet, noDamage?: true, landsOnFeet?: true, source }],
+// from its Effects that haven't run out with flags[MODULE_ID].fall (a Tumbler's Belt's reaction, a Dragonaut's Wingsuit's minute), and from
+// the item module's api.fallEases(actor) for what it wears or invests (Gliding Membranes, Soft-Landing).
+const eases = (entry) => entry && (entry.noDamage || entry.landsOnFeet || Number(entry.shorter) > 0);
 export function fallEasesOf(actor) {
-    return (actor?.itemTypes?.effect ?? []).filter((effect) => !(effect.isExpired ?? effect.system?.expired)).map((effect) => effect.flags?.[MODULE_ID]?.fall).filter((entry) => entry && (entry.noDamage || Number(entry.shorter) > 0));
+    const fromEffects = (actor?.itemTypes?.effect ?? []).filter((effect) => !(effect.isExpired ?? effect.system?.expired)).map((effect) => effect.flags?.[MODULE_ID]?.fall).filter(eases);
+    let fromItems = [];
+    const api = game.modules.get(ITEM_ID)?.active ? game.modules.get(ITEM_ID)?.api : null;
+    if (typeof api?.fallEases === "function") {
+        try {
+            const read = api.fallEases(actor);
+            fromItems = Array.isArray(read) ? read.filter(eases) : [];
+        } catch (error) {
+            console.warn(`${MODULE_ID} | ${ITEM_ID}'s fall eases for ${actor?.name}:`, error);
+        }
+    }
+    return [...fromEffects, ...fromItems];
 }
 
 // The creature as the rules see it.

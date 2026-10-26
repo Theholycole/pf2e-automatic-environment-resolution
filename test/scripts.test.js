@@ -76,4 +76,7 @@ test("what eases a creature's falls: its Effects' fall flags that haven't run ou
     const fall = (entry, extra = {}) => ({ flags: { "pf2e-automatic-environment-resolution": { fall: entry } }, ...extra });
     const actor = { itemTypes: { effect: [fall({ shorter: 120, source: "Tumbler's Belt" }), fall({ noDamage: true, source: "Dragonaut's Wingsuit" }, { isExpired: true }), fall({ shorter: 0, source: "nothing" }), { flags: {} }] } };
     assert.deepEqual(fallEasesOf(actor).map((entry) => entry.source), ["Tumbler's Belt"]);
+    globalThis.game.modules = new Map([["pf2e-automatic-item-resolution", { active: true, api: { fallEases: () => [{ shorter: 25, source: "Gliding Membranes" }, { landsOnFeet: true, source: "Cat" }, { source: "nothing" }] } }]]);
+    assert.deepEqual(fallEasesOf(actor).map((entry) => entry.source), ["Tumbler's Belt", "Gliding Membranes", "Cat"]);
+    globalThis.game.modules = new Map();
 });
