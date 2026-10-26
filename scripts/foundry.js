@@ -84,6 +84,12 @@ export function protectionsOf(actor, { temperature = null } = {}) {
     return [...fromEffects, ...fromItems];
 }
 
+// (2026-10-25, with the item module's session.) What eases its falls: [{ shorter?: feet, noDamage?: true, source }], from its Effects that
+// haven't run out with flags[MODULE_ID].fall (a Tumbler's Belt's reaction, a Dragonaut's Wingsuit's minute).
+export function fallEasesOf(actor) {
+    return (actor?.itemTypes?.effect ?? []).filter((effect) => !(effect.isExpired ?? effect.system?.expired)).map((effect) => effect.flags?.[MODULE_ID]?.fall).filter((entry) => entry && (entry.noDamage || Number(entry.shorter) > 0));
+}
+
 // The creature as the rules see it.
 export function creatureOf(token, scene = token?.parent) {
     const actor = token?.actor;

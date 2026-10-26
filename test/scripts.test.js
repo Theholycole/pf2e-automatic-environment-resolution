@@ -70,3 +70,10 @@ test("a creature's temperature protections: its Effects' flags (not run out) and
     globalThis.game.modules = new Map();
     assert.equal(protectionsOf(actor).length, 1);
 });
+
+test("what eases a creature's falls: its Effects' fall flags that haven't run out", async () => {
+    const { fallEasesOf } = await import("../scripts/foundry.js");
+    const fall = (entry, extra = {}) => ({ flags: { "pf2e-automatic-environment-resolution": { fall: entry } }, ...extra });
+    const actor = { itemTypes: { effect: [fall({ shorter: 120, source: "Tumbler's Belt" }), fall({ noDamage: true, source: "Dragonaut's Wingsuit" }, { isExpired: true }), fall({ shorter: 0, source: "nothing" }), { flags: {} }] } };
+    assert.deepEqual(fallEasesOf(actor).map((entry) => entry.source), ["Tumbler's Belt"]);
+});

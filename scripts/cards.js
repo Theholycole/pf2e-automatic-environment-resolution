@@ -2,8 +2,8 @@
 // rolled once as it's posted; each creature rolls its own save or check from the card (its owner or the GM; the result comes back through
 // PF2e's roll message, matched by its identifier); the GM's Apply does what each degree says. State in the message's flags.
 
-import { MODULE_ID, dealDamage, escapeHTML, isActiveGM, persistentDamage } from "./foundry.js";
-import { fallingDamage } from "../../pf2e-resolution-core/src/environment/disasters.js";
+import { MODULE_ID, dealDamage, escapeHTML, fallEasesOf, isActiveGM, noteToGM, persistentDamage } from "./foundry.js";
+import { easedFall } from "../../pf2e-resolution-core/src/environment/disasters.js";
 import { pushToken } from "./movement.js";
 import { buryCreature, freeCreature } from "./burial.js";
 import { partRegion } from "./regions.js";
@@ -103,6 +103,15 @@ export async function onRollMessage(message) {
     const total = message.rolls?.[0]?.total ?? null;
     const next = { ...state, targets: state.targets.map((target) => (target.id === targetId ? { ...target, degree: outcome ?? target.degree, total } : target)) };
     await card.update({ content: cardHTML(next), [`flags.${MODULE_ID}.${CARD}`]: next });
+    // (A degree that drops it: the fall's hook before the GM's Apply, for what answers a fall — the item module's Tumbler's Belt, a Fall
+    // Gently. { token, feet, message, targetId }.)
+    const row = next.degrees?.[outcome];
+    const feet = row?.falls?.feet ?? row?.pickedUp?.falling ?? null;
+    const target = next.targets.find((entry) => entry.id === targetId);
+    if (feet && target) {
+        const token = await fromUuid(target.tokenUuid).catch(() => null);
+        if (token) Hooks.callAll(`${MODULE_ID}.falling`, { token, feet, message: card, targetId });
+    }
 }
 
 // Apply: each creature that has its degree and isn't done yet, marked done as it's applied (a second Apply while one runs does nothing).
@@ -134,8 +143,11 @@ async function applyRow(token, row, state) {
         const amount = Math.floor(part.total * row.damage);
         if (amount > 0) parts.push(`${amount}[${part.type}]`);
     }
-    if (row.falls) parts.push(`${fallingDamage(row.falls.feet)}[bludgeoning]`);
-    if (row.pickedUp) parts.push(`${fallingDamage(row.pickedUp.falling)}[bludgeoning]`);
+    // (A fall, eased by what the creature has on it — the item module's Effects: a Tumbler's Belt's feet off, a wingsuit's no damage.)
+    const fallFeet = row.falls?.feet ?? row.pickedUp?.falling ?? null;
+    const fall = fallFeet === null ? null : easedFall(fallFeet, fallEasesOf(actor));
+    if (fall?.damage) parts.push(`${fall.damage}[bludgeoning]`);
+    if (fall?.by) await noteToGM(`<p>${escapeHTML(token.name)}'s fall: ${fallFeet} feet, ${fall.damage ? `as if ${fall.feet}` : "no damage"} (${escapeHTML(fall.by)}).</p>`, { title: "Falling" });
     const live = parts.filter((part) => !part.startsWith("0["));
     if (live.length) {
         const DamageRoll = (CONFIG.Dice?.rolls ?? []).find((roll) => roll?.name === "DamageRoll");
@@ -144,7 +156,7 @@ async function applyRow(token, row, state) {
     }
     if (row.persistent) await persistentDamage(actor, row.persistent.formula, row.persistent.type, token);
     for (const condition of row.conditions ?? []) await actor.increaseCondition?.(condition.slug);
-    if (row.falls || row.pickedUp) await actor.increaseCondition?.("prone");
+    if (fall?.prone) await actor.increaseCondition?.("prone");
     if (row.buried) await buryCreature(token, { snow: row.buried.snow, title: state.title, dc: state.check?.dc ?? 20, airless: Boolean(state.airless) });
     // (A failed Balance: back where its move started.)
     if (row.returnTo) await (token.document ?? token).update({ x: row.returnTo.x, y: row.returnTo.y, elevation: row.returnTo.elevation }, { teleport: true, animate: false, [MODULE_ID]: { forced: true } });
