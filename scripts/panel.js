@@ -3,8 +3,8 @@
 
 import { MODULE_ID, escapeHTML, sceneData, setSceneState, setSheltered } from "./foundry.js";
 import { DAMAGE_CATEGORIES, DIRECTIONS, DISASTERS, FEATURES, FORCE_OPEN, LOCKS, STRUCTURES, TEMPERATURES, WEATHER, temperatureFromFahrenheit } from "../../pf2e-resolution-core/src/environment/catalog.js";
-import { STRUCTURE_AC, STRUCTURE_KINDS, forceOpenDC, materialChoices, structureStats } from "../../pf2e-resolution-core/src/environment/structures.js";
-import { hitPointsOf, lockOf, placeStructures, postStructureCard, repairStructure, sceneStructures } from "./structures.js";
+import { STRUCTURE_AC, STRUCTURE_KINDS, materialChoices, structureStats } from "../../pf2e-resolution-core/src/environment/structures.js";
+import { forceDCOf, hitPointsOf, lockNumbersOf, lockOf, placeStructures, postStructureCard, repairStructure, sceneStructures } from "./structures.js";
 import { bandDC, disasterCard, disasterCategories } from "../../pf2e-resolution-core/src/environment/disasters.js";
 import { FEATURE_GROUPS, featureRules } from "../../pf2e-resolution-core/src/environment/terrain.js";
 import { creatureEffect, normalizeState } from "../../pf2e-resolution-core/src/environment/weather.js";
@@ -197,8 +197,9 @@ export class EnvironmentApp extends ApplicationV2 {
             const hp = hitPointsOf(entry);
             const lock = lockOf(entry);
             const id = entry.holder.uuid;
-            const state = [{ broken: "Broken", destroyed: "Destroyed" }[data.condition], lock ? `${LOCKS[lock]?.label ?? lock}: ${data.successes ?? 0} of ${LOCKS[lock]?.successes ?? "?"} successes` : "", data.jammed ? "Jammed (−2)" : "", entry.wall ? (entry.token ? "Wall, with its token" : "Wall") : "Token"].filter(Boolean).join(" · ");
-            const dc = forceOpenDC(data.kind, { lock, stuck: data.stuck || "stuck" });
+            const held = lockNumbersOf(entry);
+            const state = [{ broken: "Broken", destroyed: "Destroyed" }[data.condition], lock ? `${held?.label ?? lock}: ${data.successes ?? 0} of ${held?.successes ?? "?"} successes` : "", data.jammed ? "Jammed (−2)" : "", entry.wall ? (entry.token ? "Wall, with its token" : "Wall") : "Token"].filter(Boolean).join(" · ");
+            const dc = forceDCOf(entry);
             return `<tr><td>${escapeHTML(entry.name)}</td><td>${hp.value}/${hp.max} (BT ${stats.bt})</td><td class="hint">${escapeHTML(state)}</td>
                 <td class="pf2e-env-buttons">${stats.type !== "wall" ? `<input type="number" name="structure.${entry.holder.id}.dc" value="${dc}" title="Force Open DC" style="width:3.5em"><button type="button" data-action="structureCheck" data-how="force" data-structure="${id}"><i class="fa-solid fa-hand-fist"></i> ${stats.type === "portcullis" ? "Lift" : "Force Open"}</button>` : ""}${lock ? `<button type="button" data-action="structureCheck" data-how="lock" data-structure="${id}"><i class="fa-solid fa-unlock"></i> Pick the lock</button>` : ""}${stats.climb ? `<button type="button" data-action="structureCheck" data-how="climb" data-structure="${id}"><i class="fa-solid fa-person-hiking"></i> Climb</button>` : ""}<button type="button" data-action="repair" data-structure="${id}" title="Back to full Hit Points"><i class="fa-solid fa-hammer"></i> Repair</button></td></tr>`;
         }).join("");

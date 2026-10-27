@@ -12,7 +12,7 @@
 import { MODULE_ID, escapeHTML, isActiveGM } from "./foundry.js";
 import { postCard } from "./cards.js";
 import { FORCE_OPEN } from "../../pf2e-resolution-core/src/environment/catalog.js";
-import { STRUCTURE_AC, STRUCTURE_KINDS, climbCard, defaultKind, forceOpenCard, forceOpenDC, pickLockCard, structureCondition, structureOutcome, structureStats } from "../../pf2e-resolution-core/src/environment/structures.js";
+import { STRUCTURE_AC, STRUCTURE_KINDS, climbCard, defaultKind, forceOpenCard, forceOpenDC, lockStats, pickLockCard, structureCondition, structureOutcome, structureStats } from "../../pf2e-resolution-core/src/environment/structures.js";
 
 export const STRUCTURE = "structure";
 const FOLDER = "Environment: structures";
@@ -67,8 +67,9 @@ export function structureRecord(target) {
 
 function record(holder, wall, token, data) {
     const kind = data.kind || defaultKind(wall ? (wall._source ?? wall) : {});
-    const stats = structureStats({ kind, material: data.material || null });
-    return { holder, wall, token, data: { ...data, kind, condition: data.condition || "intact" }, stats, name: token?.name ?? stats.label };
+    // (2026-10-27: its own numbers — an item's structure, stats { hardness, hp, bt } —, and its own name.)
+    const stats = structureStats({ kind, material: data.material || null, stats: data.stats || null });
+    return { holder, wall, token, data: { ...data, kind, condition: data.condition || "intact" }, stats, name: token?.name ?? data.name ?? stats.label };
 }
 
 // Its Hit Points now: its token's, else what the wall keeps (full when it keeps none).
@@ -85,6 +86,10 @@ export function lockOf(entry) {
     if (entry.wall?.door) return entry.wall.ds === DOOR.LOCKED ? entry.data.lock || DEFAULT_LOCK : null;
     return entry.data.lock && !entry.data.unlocked ? entry.data.lock : null;
 }
+
+// Its lock's numbers ({ label, dc, successes }: GM Core's, or its own — lockDC, lockSuccesses) and its Force Open DC (its own forceDC first).
+export const lockNumbersOf = (entry) => lockStats(lockOf(entry), { dc: entry?.data?.lockDC, successes: entry?.data?.lockSuccesses });
+export const forceDCOf = (entry, kind = null, stuck = "stuck") => forceOpenDC(entry?.data.kind ?? kind, { lock: lockOf(entry), stuck: entry?.data.stuck || stuck, dc: entry?.data.forceDC, lockDC: entry?.data.lockDC });
 
 // Every structure on a scene: its breakable walls and the structures placed on none.
 export function sceneStructures(scene) {
@@ -119,7 +124,7 @@ async function baseActor(kind, material = null) {
     });
 }
 
-async function tokenData(kind, material, { x, y, ac, hp = null, flag }) {
+async function tokenData(kind, material, { x, y, ac, hp = null, flag, stats = null }) {
     const actor = await baseActor(kind, material);
     const size = canvas?.scene?.grid?.size ?? 100;
     const token = (await actor.getTokenDocument({ x: Math.round(x - size / 2), y: Math.round(y - size / 2) })).toObject();
@@ -127,6 +132,11 @@ async function tokenData(kind, material, { x, y, ac, hp = null, flag }) {
     const attributes = {};
     if (Number.isFinite(Number(ac)) && ac !== null && ac !== "" && Number(ac) !== STRUCTURE_AC) attributes.ac = { value: Number(ac) };
     if (Number.isFinite(hp)) attributes.hp = { value: hp };
+    // (2026-10-27: its own numbers, an item's structure: on its token, the kind's actor shared.)
+    if (stats) {
+        attributes.hardness = stats.hardness;
+        attributes.hp = { value: Number.isFinite(hp) ? hp : stats.hp, max: stats.hp };
+    }
     if (Object.keys(attributes).length) token.delta = { system: { attributes } };
     return token;
 }
@@ -137,7 +147,8 @@ export async function ensureToken(entry) {
     const wall = entry.wall;
     const [x, y] = [(wall.c[0] + wall.c[2]) / 2, (wall.c[1] + wall.c[3]) / 2];
     const hp = Number.isFinite(entry.data.hp) ? entry.data.hp : null;
-    const [token] = await wall.parent.createEmbeddedDocuments("Token", [await tokenData(entry.data.kind, entry.data.material || null, { x, y, ac: entry.data.ac, hp, flag: { wall: wall.id } })]);
+    const [token] = await wall.parent.createEmbeddedDocuments("Token", [await tokenData(entry.data.kind, entry.data.material || null, { x, y, ac: entry.data.ac, hp, flag: { wall: wall.id }, stats: entry.data.stats ? entry.stats : null })]);
+    if (token && entry.data.name) await token.update({ name: entry.data.name });
     return token;
 }
 
@@ -226,7 +237,7 @@ export async function applyStructure(uuid, effect) {
     await inTurn(entry.holder.uuid, async () => {
         const fresh = structureRecord(doc);
         const lock = lockOf(fresh);
-        const { next, opens, breaks, unlocks } = structureOutcome({ lock, successes: fresh.data.successes ?? 0, unlocked: !lock }, effect);
+        const { next, opens, breaks, unlocks } = structureOutcome({ lock, lockDC: fresh.data.lockDC, lockSuccesses: fresh.data.lockSuccesses, successes: fresh.data.successes ?? 0, unlocked: !lock }, effect);
         // (A Foundry door's lock is its door's state: opened, it starts afresh if it's locked again.)
         if (unlocks && fresh.wall?.door) Object.assign(next, { successes: 0, unlocked: false });
         if (Object.keys(next).length) await fresh.holder.update(prefixed(next));
@@ -273,8 +284,8 @@ export async function postStructureCard(kind, how, { target = null, token = null
     const structure = entry?.holder?.uuid ?? null;
     const lock = lockOf(entry);
     const card = how === "climb" ? ((dc ?? entry?.stats.climb ?? kindEntry?.climb) ? climbCard({ label, dc: dc ?? entry?.stats.climb ?? kindEntry.climb, height }) : null)
-        : how === "force" ? forceOpenCard({ label, dc: dc ?? forceOpenDC(entry?.data.kind ?? kind, { lock, stuck }), jammed: Boolean(entry?.data.jammed), structure })
-        : how === "lock" ? pickLockCard({ label, lock, successes: entry?.data.successes, structure })
+        : how === "force" ? forceOpenCard({ label, dc: dc ?? forceOpenDC(entry?.data.kind ?? kind, { lock, stuck, dc: entry?.data.forceDC, lockDC: entry?.data.lockDC }), jammed: Boolean(entry?.data.jammed), structure })
+        : how === "lock" ? pickLockCard({ label, lock, successes: entry?.data.successes, structure, lockDC: entry?.data.lockDC, lockSuccesses: entry?.data.lockSuccesses })
         : null;
     if (!card) {
         ui.notifications.warn(how === "climb" ? `${label} has no Climb DC.` : `${label} has no lock to pick.`);

@@ -10,7 +10,7 @@
 import { MODULE_ID, escapeHTML } from "./foundry.js";
 import { LOCKS } from "../../pf2e-resolution-core/src/environment/catalog.js";
 import { STRUCTURE_AC, STRUCTURE_KINDS, defaultKind, materialChoices } from "../../pf2e-resolution-core/src/environment/structures.js";
-import { OWN_ICONS, STRUCTURE, hitPointsOf, isStructureWall, lockOf, postStructureCard, repairStructure, structureRecord, targetStructure } from "./structures.js";
+import { OWN_ICONS, STRUCTURE, hitPointsOf, isStructureWall, lockNumbersOf, lockOf, postStructureCard, repairStructure, structureRecord, targetStructure } from "./structures.js";
 
 const DOOR = { CLOSED: 0, OPEN: 1, LOCKED: 2 };
 const option = (value, label, selected) => `<option value="${escapeHTML(value)}"${String(selected ?? "") === String(value) ? " selected" : ""}>${escapeHTML(label)}</option>`;
@@ -40,7 +40,7 @@ export function injectWallConfig(app, html) {
             <p class="hint">Off, it's an ordinary Foundry wall. On, creatures can Strike it, Force it Open, pick its lock or climb it, and it breaks.</p></div>
         <div class="form-group"><label>Kind</label><div class="form-fields"><select name="${name("kind")}">${Object.entries(STRUCTURE_KINDS).map(([key, each]) => option(key, each.label, kind)).join("")}</select></div></div>
         <div class="form-group"><label>Material</label><div class="form-fields"><select name="${name("material")}">${option("", "Its kind's own (GM Core's table)", data.material ?? "")}${[...groups].map(([group, options]) => `<optgroup label="${escapeHTML(group)}">${options.join("")}</optgroup>`).join("")}</select></div></div>
-        <div class="form-group"><label>Lock</label><div class="form-fields"><select name="${name("lock")}">${option("", "None (locked in Foundry: a simple lock)", data.lock ?? "")}${Object.entries(LOCKS).map(([key, lock]) => option(key, `${lock.label} (DC ${lock.dc}, ${lock.successes} successes)`, data.lock)).join("")}</select></div></div>
+        <div class="form-group"><label>Lock</label><div class="form-fields"><select name="${name("lock")}">${option("", "None (locked in Foundry: a simple lock)", data.lock ?? "")}${Object.entries(LOCKS).map(([key, lock]) => option(key, `${lock.label} (DC ${lock.dc}, ${lock.successes} successes)`, data.lock)).join("")}${data.lock && !LOCKS[data.lock] && Number(data.lockDC) > 0 ? option(data.lock, `Its own (DC ${Number(data.lockDC)}, ${Number(data.lockSuccesses) || 1} successes)`, data.lock) : ""}</select></div></div>
         <div class="form-group"><label>Without its lock</label><div class="form-fields"><select name="${name("stuck")}">${option("stuck", "Stuck (Force Open DC 15)", data.stuck ?? "stuck")}${option("very-stuck", "Exceptionally stuck (DC 20)", data.stuck)}</select></div></div>
         <div class="form-group"><label>AC</label><div class="form-fields"><input type="number" name="${name("ac")}" value="${data.ac ?? ""}" placeholder="${STRUCTURE_AC}"></div></div>
         ${entry ? `<p class="hint">${escapeHTML(entry.stats.label)}: Hardness ${entry.stats.hardness}, HP ${hp.value}/${hp.max} (BT ${entry.stats.bt})${entry.data.condition && entry.data.condition !== "intact" ? `, ${entry.data.condition}` : ""}.</p>` : ""}`;
@@ -178,7 +178,8 @@ export async function openStructureMenu(target) {
     const lock = lockOf(entry);
     const hp = hitPointsOf(entry);
     const open = Boolean(wall?.door && wall.ds === DOOR.OPEN);
-    const state = [{ broken: "Broken.", destroyed: "Destroyed." }[data.condition], lock ? (gm ? `${LOCKS[lock]?.label ?? "Locked"}: ${data.successes ?? 0} of ${LOCKS[lock]?.successes ?? "?"} successes.` : "Locked.") : "", data.jammed ? "Jammed (−2 to Force it Open)." : ""].filter(Boolean).join(" ");
+    const held = lockNumbersOf(entry);
+    const state = [{ broken: "Broken.", destroyed: "Destroyed." }[data.condition], lock ? (gm ? `${held?.label ?? "Locked"}: ${data.successes ?? 0} of ${held?.successes ?? "?"} successes.` : "Locked.") : "", data.jammed ? "Jammed (−2 to Force it Open)." : ""].filter(Boolean).join(" ");
     const content = `<p>${gm ? `Hardness ${stats.hardness}, HP ${hp.value}/${hp.max} (BT ${stats.bt}). ` : ""}${escapeHTML(state)}</p><p class="hint">Checks go to your selected tokens. Strike it targets it: then Strike from your sheet.</p>`;
     const buttons = [{ action: "strike", label: "Strike it", icon: "fa-solid fa-crosshairs", default: true }];
     if (stats.type !== "wall" && !open && data.condition !== "destroyed") buttons.push({ action: "force", label: stats.type === "portcullis" ? "Lift it" : "Force it open", icon: "fa-solid fa-hand-fist" });

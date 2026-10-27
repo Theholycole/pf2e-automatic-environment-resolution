@@ -17,6 +17,7 @@ import { onSpellCast, targetFlatCheck } from "./spells.js";
 import { syncVisuals, visualsOf } from "./visuals.js";
 import { onStructureActor, onStructureRequest, onStructureToken, onWallDeleted, placeStructures, postStructureCard, sceneStructures, structureRecord } from "./structures.js";
 import { drawStructureIcons, injectWallConfig, installDoorControls, openStructureMenu, refreshStructureIcons, stripUnusedStructure } from "./structure-ui.js";
+import { placeStructure, placedStructures, removeStructure } from "./structure-template.js";
 import { disasterCard } from "../../pf2e-resolution-core/src/environment/disasters.js";
 import { DAMAGE_CATEGORIES, setCategoryDefaults } from "../../pf2e-resolution-core/src/environment/catalog.js";
 import { creatureEffect, flatCheckFor, normalizeState } from "../../pf2e-resolution-core/src/environment/weather.js";
@@ -79,6 +80,11 @@ Hooks.once("ready", () => {
         structures: (scene = canvas?.scene) => sceneStructures(scene),
         structure: structureRecord,
         openStructureMenu,
+        // (2026-10-27, for the item module's Warding Escutcheon and Instant Fortress: walls from a template, gone on command —
+        // scripts/structure-template.js.)
+        placeStructure,
+        placedStructures: (scene = canvas?.scene) => placedStructures(scene),
+        removeStructure,
         rules: Object.freeze({ creatureEffect, flatCheckFor, normalizeState })
     });
     if (isActiveGM() && canvas?.scene) syncScene(canvas.scene);
