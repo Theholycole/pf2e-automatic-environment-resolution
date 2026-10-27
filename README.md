@@ -25,6 +25,8 @@ Each creature on the scene gets an Effect that matches the weather:
 - **Underwater:** PF2e's Aquatic Combat effect.
 - **Breath:** PF2e's Remaining Air for creatures that must hold their breath.
 
+The scene shows the weather too: Foundry's rain, snow, fog or blizzard for the heaviest weather that's on. Each weather has a **Look** menu with every weather effect Foundry knows, including other modules' effects. A switch turns the look off for the scene.
+
 The module also does the rest automatically:
 
 - It rolls flat checks on attacks against concealed and hidden targets.

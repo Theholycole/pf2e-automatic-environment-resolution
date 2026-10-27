@@ -14,6 +14,7 @@ import { migrateRegions, regionEvent, setRegionFeature, setSceneGround } from ".
 import { installTerrainCost } from "./terrain-cost.js";
 import { windMoveGate } from "./wind.js";
 import { onSpellCast, targetFlatCheck } from "./spells.js";
+import { syncVisuals, visualsOf } from "./visuals.js";
 import { disasterCard } from "../../pf2e-resolution-core/src/environment/disasters.js";
 import { DAMAGE_CATEGORIES, setCategoryDefaults } from "../../pf2e-resolution-core/src/environment/catalog.js";
 import { creatureEffect, flatCheckFor, normalizeState } from "../../pf2e-resolution-core/src/environment/weather.js";
@@ -58,6 +59,9 @@ Hooks.once("ready", () => {
         // (For a spell's targeting: the weather's flat check between two tokens, { dc, why } or null — scripts/spells.js.)
         targetFlatCheck,
         sync: syncScene,
+        // (The scene's weather look: { on, looks, shown, before }, and bringing it in step — scripts/visuals.js.)
+        visuals: (scene = canvas?.scene) => visualsOf(scene),
+        syncVisuals,
         rules: Object.freeze({ creatureEffect, flatCheckFor, normalizeState })
     });
     if (isActiveGM() && canvas?.scene) syncScene(canvas.scene);
@@ -73,10 +77,13 @@ Hooks.on("canvasReady", (canvas) => {
     if (isActiveGM()) syncScene(canvas.scene);
 });
 
-// (The scene's weather or shelter changed: every creature on it. The clock alone moving doesn't count.)
+// (The scene's weather or shelter changed: every creature on it. The clock alone moving doesn't count. Its weather's look too:
+// scripts/visuals.js, which changes nothing while the look stays.)
 const seen = new Map();
 Hooks.on("updateScene", (scene, change) => {
-    if (!isActiveGM() || !foundry.utils.hasProperty(change, `flags.${MODULE_ID}.${FLAG}`)) return;
+    if (!isActiveGM() || !foundry.utils.hasProperty(change, `flags.${MODULE_ID}`)) return;
+    syncVisuals(scene);
+    if (!foundry.utils.hasProperty(change, `flags.${MODULE_ID}.${FLAG}`)) return;
     const data = sceneData(scene);
     const signature = JSON.stringify([data.state, data.sheltered]);
     if (seen.get(scene.id) === signature) return;

@@ -89,3 +89,23 @@ test("what of the weather a creature ignores: its Effects' weatherIgnores flags 
     assert.deepEqual(weatherIgnoresOf(actor).map((entry) => entry.source), ["Ixamè's Eye", "Cape of the Open Sky"]);
     globalThis.game.modules = new Map();
 });
+
+test("the scene's weather look: the heaviest weather's, its level's own or the GM's pick, other modules' looks too (2026-10-26)", async () => {
+    const { autoLook, sceneLook } = await import("../scripts/visuals.js");
+    const { normalizeState } = await import("../../pf2e-resolution-core/src/environment/weather.js");
+    const foundry = new Set(["leaves", "rain", "rainStorm", "fog", "snow", "blizzard"]);
+    const state = (raw) => normalizeState(raw);
+    assert.equal(autoLook("precipitation", { level: "light", kind: "rain" }), "rain");
+    assert.equal(autoLook("precipitation", { level: "downpour", kind: "rain" }), "rainStorm");
+    assert.equal(autoLook("precipitation", { level: "moderate", kind: "snow" }), "snow");
+    assert.equal(autoLook("precipitation", { level: "heavy", kind: "snow" }), "blizzard");
+    assert.equal(autoLook("wind", { level: "strong" }), "", "wind has none of its own");
+    assert.equal(sceneLook(state({}), {}, foundry), "", "no weather, no look");
+    assert.equal(sceneLook(state({ fog: { level: "thick" } }), {}, foundry), "fog");
+    assert.equal(sceneLook(state({ fog: { level: "thick" }, precipitation: { level: "light", kind: "snow" } }), {}, foundry), "snow", "the heavier weather's");
+    assert.equal(sceneLook(state({ thunderstorm: { level: "storm" }, fog: { level: "light" } }), {}, foundry), "rainStorm");
+    assert.equal(sceneLook(state({ fog: { level: "light" } }), { on: false }, foundry), "", "switched off for the scene");
+    assert.equal(sceneLook(state({ fog: { level: "light" }, wind: { level: "strong" } }), { looks: { fog: "none", wind: "leaves" } }, foundry), "leaves", "None passes to the next weather");
+    assert.equal(sceneLook(state({ sandstorm: { level: "mild" } }), { looks: { sandstorm: "fxDust" } }, new Set([...foundry, "fxDust"])), "fxDust", "another module's look");
+    assert.equal(sceneLook(state({ sandstorm: { level: "mild" } }), { looks: { sandstorm: "fxDust" } }, foundry), "fog", "a look Foundry no longer has: Automatic");
+});

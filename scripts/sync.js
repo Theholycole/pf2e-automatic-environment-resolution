@@ -28,10 +28,24 @@ function effectData(effect, sceneId) {
     };
 }
 
+// (One change at a time for each creature, and for each scene's region: a canvas redraw — a new weather look — syncs the scene again while
+// the change that caused it is still syncing, and both would delete the same Effects.)
+const chains = new Map();
+function inTurn(key, task) {
+    const next = (chains.get(key) ?? Promise.resolve()).then(task);
+    chains.set(key, next.catch(() => {}));
+    return next;
+}
+
 // One token's weather Effect: made, remade when it changed, removed when the weather does nothing to it.
-export async function syncToken(token, state = sceneState(token.parent)) {
+export function syncToken(token, state = null) {
     const actor = token?.actor;
-    if (!isCreature(actor) || !isActiveGM()) return;
+    if (!isCreature(actor) || !isActiveGM()) return Promise.resolve();
+    return inTurn(actor.uuid, () => syncTokenNow(token, state ?? sceneState(token.parent)));
+}
+
+async function syncTokenNow(token, state) {
+    const actor = token.actor;
     const creature = creatureOf(token);
     const effect = creatureEffect(state, creature);
     const held = ours(actor, WEATHER_FLAG);
@@ -70,7 +84,7 @@ export async function syncScene(scene) {
             console.warn(`${MODULE_ID} | ${token.name}'s weather couldn't be set.`, error);
         }
     }
-    await syncRegion(scene, state);
+    await inTurn(`region:${scene.uuid}`, () => syncRegion(scene, sceneState(scene)));
 }
 
 // A linked actor leaving the scene keeps none of its weather.

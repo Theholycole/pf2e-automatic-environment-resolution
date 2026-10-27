@@ -30,6 +30,24 @@ The user's answers:
   - `regions.js`: terrain regions.
   - `movement.js`: forced movement.
   - `panel.js`: the GM window.
+  - `visuals.js`: Foundry's weather effect on the scene, set from the module's weather.
+
+## The scene's weather look
+
+The user's request (2026-10-26): apply a weather effect to the scene automatically, with a menu next to each weather listing every option, including ones other modules add.
+
+- Foundry keeps one weather effect per scene (the Scene's `weather`, from `CONFIG.weatherEffects`). The module sets it from the heaviest weather that's on, in this order: thunderstorm, precipitation, sandstorm, ash, smoke, fog, wind, current, underwater.
+- Each weather's **Look** menu lists Automatic, None, and every key in `CONFIG.weatherEffects` when the window opens, so effects other modules add there show up. A pick whose module is gone counts as Automatic.
+- **Automatic:**
+  - Rain and sleet: Rain, or Rain Storm when heavy or worse.
+  - Snow: Snow, or Blizzard when heavy or worse.
+  - Hail and thunderstorms: Rain Storm (a thunderstorm with snow: Blizzard).
+  - Fog, smoke, ash and sandstorms: Fog.
+  - Wind, currents and underwater: none (Autumn Leaves can be picked for wind).
+- **None** gives that weather no look, so the next weather's look shows.
+- **Show the weather on the scene** switches it off for the scene.
+- The scene's own weather from before is kept in the flag `visuals.before` and comes back when the module's weather ends. If the GM picked another weather by hand in the meantime, that one stays.
+- A new weather effect redraws the canvas on every client, so the module only changes it when the look changes.
 
 ## Rulings where GM Core leaves the numbers to the GM
 

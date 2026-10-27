@@ -10,6 +10,7 @@ import { igniteGas, partCrowd, regionFeature, sceneGround, setRegionFeature, set
 import { postCard } from "./cards.js";
 import { buriedEffectOf, digCard, freeCreature } from "./burial.js";
 import { creatureOf, isCreature } from "./foundry.js";
+import { LOOK_ORDER, autoLook, availableLooks, sceneLook, setVisuals, visualsOf } from "./visuals.js";
 
 const { ApplicationV2 } = foundry.applications.api;
 
@@ -17,6 +18,11 @@ const option = (value, label, selected) => `<option value="${escapeHTML(value)}"
 const directionSelect = (name, value) => `<select name="${name}">${Object.keys(DIRECTIONS).map((key) => option(key, key, value)).join("")}</select>`;
 const featureSelect = (name, value) => `<select name="${name}">${option("", "None", value)}${FEATURE_GROUPS.map(([group, keys]) => `<optgroup label="${escapeHTML(group)}">${keys.map((key) => option(key, FEATURES[key].label, value)).join("")}</optgroup>`).join("")}</select>`;
 const selectedTokens = () => canvas?.tokens?.controlled ?? [];
+// (A weather's look on the scene: Automatic, None, or any of Foundry's weather effects, other modules' included — scripts/visuals.js.)
+function lookSelect(toggle, pick, auto, looks) {
+    const labelOf = (key) => looks.find((look) => look.key === key)?.label ?? "";
+    return `<label class="pf2e-env-look" title="Foundry's weather effect on the scene for it, when it's the heaviest weather that's on">Look <select name="look.${toggle}">${option("auto", `Automatic (${labelOf(auto) || "none"})`, pick ?? "auto")}${option("none", "None", pick)}${looks.map((look) => option(look.key, look.label, pick)).join("")}</select></label>`;
+}
 const targetedTokens = () => [...(game.user?.targets ?? [])];
 
 // The weather toggles' extra fields.
@@ -88,12 +94,15 @@ export class EnvironmentApp extends ApplicationV2 {
     }
 
     #weatherTab(state, data) {
+        const visuals = visualsOf(this.scene);
+        const looks = availableLooks();
         const rows = Object.entries(WEATHER).map(([toggle, entry]) => {
             const on = Boolean(state[toggle]);
             // (Off: its first level that does something — Fog past Mist, a thunderstorm's ordinary one.)
             const level = state[toggle]?.level ?? entry.levels[entry.levels.length > 2 ? 1 : 0].key;
+            const shown = state[toggle] ?? normalizeState({ [toggle]: { level } })[toggle];
             return `<fieldset class="pf2e-env-toggle ${on ? "on" : ""}">
-                <legend><label><input type="checkbox" name="${toggle}.on"${on ? " checked" : ""}> ${escapeHTML(entry.label)}</label></legend>
+                <legend><label><input type="checkbox" name="${toggle}.on"${on ? " checked" : ""}> ${escapeHTML(entry.label)}</label> ${lookSelect(toggle, visuals.looks[toggle], autoLook(toggle, shown, state), looks)}</legend>
                 <div class="pf2e-env-row"><select name="${toggle}.level">${entry.levels.map((entryLevel) => option(entryLevel.key, `${entryLevel.label}${Number.isFinite(entryLevel.penalty) && entryLevel.penalty ? ` (${entryLevel.penalty})` : ""}`, level)).join("")}</select> ${weatherFields(toggle, state[toggle])}</div>
                 <p class="hint">${escapeHTML(entry.text ?? "")}</p>
             </fieldset>`;
@@ -104,7 +113,11 @@ export class EnvironmentApp extends ApplicationV2 {
             const effect = creatureEffect(state, creatureOf(token, this.scene));
             return `<li><label><input type="checkbox" name="sheltered.${token.id}"${sheltered.has(token.id) ? " checked" : ""}> ${escapeHTML(token.name)}</label> <span class="hint">${escapeHTML(effect ? effect.summary.join(" ") : "Unaffected.")}</span></li>`;
         }).join("");
-        return `${rows}
+        const now = sceneLook(state, visuals, new Set(looks.map((look) => look.key)));
+        const order = LOOK_ORDER.map((toggle) => WEATHER[toggle]?.label.toLowerCase()).filter(Boolean).join(", ");
+        return `<fieldset class="pf2e-env-toggle ${visuals.on ? "on" : ""}"><legend><label><input type="checkbox" name="visuals.on"${visuals.on ? " checked" : ""}> Show the weather on the scene</label></legend>
+                <p class="hint">Foundry's weather effect for the heaviest weather that's on${now ? ` (now: ${escapeHTML(looks.find((look) => look.key === now)?.label ?? now)})` : ""}, one at a time: ${escapeHTML(order)}. Each weather's Look menu picks its own, other modules' weather effects included. The scene's own weather comes back when the module's ends.</p></fieldset>
+            ${rows}
             <fieldset class="pf2e-env-toggle on"><legend>Temperature</legend>
                 <div class="pf2e-env-row"><select name="temperature">${TEMPERATURES.map((entry) => option(entry.key, entry.label, state.temperature)).join("")}</select>
                 <label>or <input type="number" name="fahrenheit" placeholder="°F" style="width:5em"></label><label><input type="checkbox" name="humid"> Humid</label>
@@ -183,6 +196,7 @@ export class EnvironmentApp extends ApplicationV2 {
         raw.temperature = values.temperature ?? "normal";
         if (values.travel?.on) raw.travel = before.state?.travel?.on ? before.state.travel : { on: true, since: game.time.worldTime };
         await setSceneState(this.scene, raw);
+        await setVisuals(this.scene, { on: Boolean(values.visuals?.on), looks: Object.fromEntries(Object.keys(WEATHER).map((toggle) => [toggle, values.look?.[toggle] || "auto"])) });
         const sheltered = Object.entries(values.sheltered ?? {}).filter(([, value]) => value).map(([id]) => id);
         await setSheltered(this.scene, sheltered);
         // (A new journey: fatigue counts afresh.)
