@@ -7,10 +7,11 @@ import { easedFall } from "../../pf2e-resolution-core/src/environment/disasters.
 import { pushToken } from "./movement.js";
 import { buryCreature, freeCreature } from "./burial.js";
 import { partRegion } from "./regions.js";
+import { applyStructure } from "./structures.js";
 
 const CARD = "card";
 const DEGREES = { criticalSuccess: "Critical success", success: "Success", failure: "Failure", criticalFailure: "Critical failure" };
-const STATISTICS = { fortitude: "Fortitude", reflex: "Reflex", will: "Will", athletics: "Athletics", acrobatics: "Acrobatics", diplomacy: "Diplomacy", intimidation: "Intimidation", performance: "Performance" };
+const STATISTICS = { fortitude: "Fortitude", reflex: "Reflex", will: "Will", athletics: "Athletics", acrobatics: "Acrobatics", diplomacy: "Diplomacy", intimidation: "Intimidation", performance: "Performance", thievery: "Thievery" };
 
 export const cardOf = (message) => message?.getFlag?.(MODULE_ID, CARD) ?? null;
 const identifierOf = (messageId, targetId) => `${MODULE_ID}:${messageId}:${targetId}`;
@@ -85,9 +86,11 @@ async function rollTarget(message, targetId) {
     const statistic = actor.getStatistic?.(state.check.statistic);
     if (!statistic) throw new Error(`${target.name} has no ${STATISTICS[state.check.statistic] ?? state.check.statistic}.`);
     // (Its own penalty on the check: a Small creature's −1 against the wind, a Tiny one's −2.)
-    const penalty = state.check.penalties?.[targetId];
-    const modifiers = penalty && game.pf2e?.Modifier ? [new game.pf2e.Modifier({ label: penalty.label, modifier: penalty.value, type: "circumstance" })] : [];
-    await statistic.roll({ dc: { value: state.check.dc, label: `${state.title} DC` }, identifier: identifierOf(message.id, targetId), skipDialog: true, extraRollOptions: ["environment", `environment:${state.key ?? "check"}`], ...(modifiers.length ? { modifiers } : {}) });
+    // (And one on every creature's: a jammed door's −2 to Force it Open.)
+    const penalties = [state.check.penalties?.[targetId], state.check.penalty].filter(Boolean);
+    const modifiers = game.pf2e?.Modifier ? penalties.map((penalty) => new game.pf2e.Modifier({ label: penalty.label, modifier: penalty.value, type: "circumstance" })) : [];
+    // (The action's own roll options too — a crowbar's bonus to Force Open.)
+    await statistic.roll({ dc: { value: state.check.dc, label: `${state.title} DC` }, identifier: identifierOf(message.id, targetId), skipDialog: true, extraRollOptions: ["environment", `environment:${state.key ?? "check"}`, ...(state.rollOptions ?? [])], ...(modifiers.length ? { modifiers } : {}) });
 }
 
 // A roll's message from a card's button (any client posts it; the active GM records it on the card).
@@ -160,6 +163,8 @@ async function applyRow(token, row, state) {
     if (row.persistent) await persistentDamage(actor, row.persistent.formula, row.persistent.type, token);
     for (const condition of row.conditions ?? []) await actor.increaseCondition?.(condition.slug);
     if (fall?.prone) await actor.increaseCondition?.("prone");
+    // (A structure's card: what the degree does to it — opened, broken open, jammed, a success toward its lock. scripts/structures.js.)
+    if (row.structure && state.structure) await applyStructure(state.structure, row.structure);
     // (2026-10-26, for the item module: the fall done — an Impact Foam Chassis used up, its foam around the creature.)
     if (fall) Hooks.callAll(`${MODULE_ID}.fell`, { token, feet: fallFeet, damage: fall.before, applied: fall.damage, reductions: fall.reductions });
     if (row.buried) await buryCreature(token, { snow: row.buried.snow, title: state.title, dc: state.check?.dc ?? 20, airless: Boolean(state.airless) });

@@ -31,6 +31,26 @@ The user's answers:
   - `movement.js`: forced movement.
   - `panel.js`: the GM window.
   - `visuals.js`: Foundry's weather effect on the scene, set from the module's weather.
+  - `structures.js`: doors, walls and portcullises as targetable tokens, and their cards (the rules in the core's `src/environment/structures.js`).
+
+## Structures
+
+The user's request (2026-10-26): post checks and track damage done to structures, with a simple actor for players to target.
+
+- **The actor:** a PF2e hazard for each kind, in the world's "Environment: structures" folder. It has GM Core's Hardness and Hit Points and object immunities. Its tokens are unlinked, so each keeps its own Hit Points. PF2e's own damage takes Hardness off (halved for adamantine). The Broken Threshold is kept on the token's flag, since PF2e hazards don't store one.
+- **AC:** no rule gives an unattended object an AC (GM Core lists only Climb DC and Hardness, HP and BT), so it's 10 unless the GM sets another in the tab.
+- **On a wall:** a structure placed with walls selected on the Walls layer is linked to its wall (`flags["pf2e-automatic-environment-resolution"].structure.wall`):
+  - At or below its Broken Threshold it gets PF2e's broken condition, and a locked door's lock no longer holds (locked becomes closed).
+  - At 0 Hit Points it's destroyed (the dead marker), and the wall stops blocking: its movement, sight, light, sound and door settings are kept in `saved` and set to none.
+  - Raised above 0 again (the tab's Repair), the wall gets them back.
+- **Cards** (the selected creatures roll; the GM's Apply does the rest):
+  - **Climb:** Athletics against the table's Climb DC. A critical failure falls from the height the GM enters, or lands prone from the ground.
+  - **Force Open:** Athletics, with PF2e's `action:force-open` roll option, so a crowbar's bonus counts.
+    - The DC is the lock's Thievery DC + 5 ("very hard"). Without a lock it's the table's (a stuck door's 15). Lifting a portcullis uses the higher of the two.
+    - A critical success opens it undamaged.
+    - A success breaks it open: Hit Points down to its Broken Threshold, and the door open.
+    - A critical failure jams it: −2 circumstance to every later attempt.
+  - **Pick a Lock:** Thievery against the lock's DC. A success counts 1 toward the lock's successes and a critical success 2. Locks are poor 15/2, simple 20/3, average 25/4, good 30/5 and superior 40/6. Once the count is reached the lock opens.
 
 ## The scene's weather look
 

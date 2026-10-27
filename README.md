@@ -78,9 +78,18 @@ You pick the damage category, the dice and the DC. Each creature rolls its own s
 - falling
 - conditions
 
-## Reference
+## Doors, walls and portcullises
 
-The window also lists the doors, walls and portcullises table and the Force Open DCs.
+The **Doors and walls** tab lists GM Core's structures and puts them into play:
+
+- **Place** one as a token players can target and Strike. It's a PF2e hazard with the table's Hardness and Hit Points, and PF2e takes its Hardness off the damage. Its AC is 10 unless you change it, since no rule gives an object an AC.
+- Select walls or doors on the Walls layer first, and the structure follows its wall:
+  - Broken: a locked door's lock no longer holds.
+  - Destroyed: the wall stops blocking until the structure is repaired.
+- **Climb**, **Force Open** (or lift a portcullis) and **Pick the lock** post cards for the selected creatures:
+  - Force Open: a critical success opens it, a success breaks it open, and a critical failure jams it (−2 to later attempts).
+  - Pick a Lock: the lock's successes are counted until it opens.
+- A placed door can carry a lock (poor to superior). Its Force Open DC is the lock's DC + 5.
 
 See `docs/design.md` for the rulings where GM Core leaves numbers to the GM.
 

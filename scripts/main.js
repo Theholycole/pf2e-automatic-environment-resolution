@@ -15,6 +15,7 @@ import { installTerrainCost } from "./terrain-cost.js";
 import { windMoveGate } from "./wind.js";
 import { onSpellCast, targetFlatCheck } from "./spells.js";
 import { syncVisuals, visualsOf } from "./visuals.js";
+import { onStructureActor, placeStructures, postStructureCard, structureTokens } from "./structures.js";
 import { disasterCard } from "../../pf2e-resolution-core/src/environment/disasters.js";
 import { DAMAGE_CATEGORIES, setCategoryDefaults } from "../../pf2e-resolution-core/src/environment/catalog.js";
 import { creatureEffect, flatCheckFor, normalizeState } from "../../pf2e-resolution-core/src/environment/weather.js";
@@ -62,6 +63,10 @@ Hooks.once("ready", () => {
         // (The scene's weather look: { on, looks, shown, before }, and bringing it in step — scripts/visuals.js.)
         visuals: (scene = canvas?.scene) => visualsOf(scene),
         syncVisuals,
+        // (Doors, walls and portcullises to target and break, and their checks — scripts/structures.js.)
+        placeStructures,
+        postStructureCard,
+        structures: (scene = canvas?.scene) => structureTokens(scene),
         rules: Object.freeze({ creatureEffect, flatCheckFor, normalizeState })
     });
     if (isActiveGM() && canvas?.scene) syncScene(canvas.scene);
@@ -112,6 +117,9 @@ Hooks.on("moveToken", (token) => {
         syncScene(scene);
     }, 750));
 });
+
+// (A structure's Hit Points changed: broken, destroyed or repaired, and its wall with it.)
+Hooks.on("updateActor", (actor, change) => onStructureActor(actor, change));
 
 Hooks.on("createToken", (token) => {
     if (isActiveGM()) syncToken(token);
