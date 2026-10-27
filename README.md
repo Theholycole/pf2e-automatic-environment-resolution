@@ -78,18 +78,27 @@ You pick the damage category, the dice and the DC. Each creature rolls its own s
 - falling
 - conditions
 
-## Doors, walls and portcullises
+## Doors, walls, windows and portcullises
 
-The **Doors and walls** tab lists GM Core's structures and puts them into play:
+Foundry's walls stay ordinary walls until you make one breakable. Only then does it do more than Foundry does.
 
-- **Place** one as a token players can target and Strike. It's a PF2e hazard with the table's Hardness and Hit Points, and PF2e takes its Hardness off the damage. Its AC is 10 unless you change it, since no rule gives an object an AC.
-- Select walls or doors on the Walls layer first, and the structure follows its wall:
+- **Making one breakable:** tick **Breakable** in the wall's settings (the Structure section). Pick its kind (a GM Core door, wall or portcullis, or a window) and, if you like, its material, lock and AC. Or select walls on the Walls layer and use **Place** on the **Doors and walls** tab.
+- **Materials:** a structure uses its kind's numbers from GM Core's table, or any material you pick:
+  - GM Core's materials table, from paper to iron or steel structures. Windows default to Glass (Hardness 1, HP 4, BT 2).
+  - Every precious material with structure numbers, at each grade: adamantine, cold iron, dawnsilver, duskwood, orichalcum, silver, abysium, djezet, inubrix, noqual, siccatite, peachwood, keep stone, sovereign steel, sisterstone, throneglass and warpglass.
+- **Interacting with it:**
+  - Players right-click a breakable door, or click the icon on a breakable wall or window. The GM uses Shift+right-click on doors, since the GM's plain right-click still locks and unlocks.
+  - The menu offers **Strike it**, **Force it open** (Lift for a portcullis), **Pick the lock**, **Climb it**, and the GM's **Repair**.
+  - Strike it puts a token on the wall and targets it, so the player Strikes from their sheet. The token is a PF2e hazard, and PF2e takes its Hardness off the damage. Its AC is 10 unless you change it, since no rule gives an object an AC.
+- **Breaking:**
   - Broken: a locked door's lock no longer holds.
-  - Destroyed: the wall stops blocking until the structure is repaired.
-- **Climb**, **Force Open** (or lift a portcullis) and **Pick the lock** post cards for the selected creatures:
+  - Destroyed: the wall stops blocking until it's repaired, and Repair puts back exactly what it blocked.
+- **The cards:**
   - Force Open: a critical success opens it, a success breaks it open, and a critical failure jams it (−2 to later attempts).
-  - Pick a Lock: the lock's successes are counted until it opens.
-- A placed door can carry a lock (poor to superior). Its Force Open DC is the lock's DC + 5.
+  - Pick a Lock: the lock's successes are counted until it opens. A Foundry door that's locked has a simple lock unless you pick another.
+  - The Force Open DC is the lock's DC + 5, or 15 for a stuck door or window (20 if exceptionally stuck).
+- The tab's **Place** without walls selected puts a free token at the middle of the view. Its Climb and Force Open buttons post cards for the selected creatures.
+- A setting hides the wall and window icons from players.
 
 See `docs/design.md` for the rulings where GM Core leaves numbers to the GM.
 

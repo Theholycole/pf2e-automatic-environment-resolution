@@ -31,15 +31,36 @@ The user's answers:
   - `movement.js`: forced movement.
   - `panel.js`: the GM window.
   - `visuals.js`: Foundry's weather effect on the scene, set from the module's weather.
-  - `structures.js`: doors, walls and portcullises as targetable tokens, and their cards (the rules in the core's `src/environment/structures.js`).
+  - `structures.js`: structures — breakable walls and free tokens, their state, damage and cards (the rules in the core's `src/environment/structures.js`).
+  - `structure-ui.js`: breakable Foundry walls: the wall settings' Structure section, the door control's right-click, the icons on walls and windows, and the menu.
 
 ## Structures
 
-The user's request (2026-10-26): post checks and track damage done to structures, with a simple actor for players to target.
+The user's requests (2026-10-26):
 
-- **The actor:** a PF2e hazard for each kind, in the world's "Environment: structures" folder. It has GM Core's Hardness and Hit Points and object immunities. Its tokens are unlinked, so each keeps its own Hit Points. PF2e's own damage takes Hardness off (halved for adamantine). The Broken Threshold is kept on the token's flag, since PF2e hazards don't store one.
+- Post checks and track damage done to structures, with a simple actor for players to target.
+- Make Foundry's walls, doors and windows interactable, with Foundry's own behaviour the default ("so we dont flood any scenes with breakable walls").
+- Windows use Glass. Precious materials are options.
+
+How it works:
+
+- **Opt-in:** a wall is breakable only when its flag `structure.on` is set, from its settings' Structure section or the tab's Place. Saving a wall's settings without ticking Breakable writes no flag (`preUpdateWall` strips it), and an unticked section's other fields are disabled, so a structure switched off keeps its settings.
+- **Where the state lives:** on the wall (`flags["pf2e-automatic-environment-resolution"].structure`: `kind`, `material`, `lock`, `stuck`, `ac`, `successes`, `jammed`, `condition`, `hp`, `saved`). A wall's token carries only `{ wall }`. A token placed on no wall carries the whole state itself.
+- **Its token:** made on the wall's middle when it's first wanted.
+  - The GM's Strike it, or Place, makes it directly.
+  - A player can't create tokens, so the player's client posts a whispered request (`structureRequest`). The active GM's client makes the token and deletes the request, and the player's client targets the token when it appears.
+  - Without a token, the wall keeps its Hit Points itself (`hp`, null when full).
+- **Numbers:** its kind's from GM Core's table, or its material's.
+  - The materials are GM Core's Table 11-4 and the precious materials' structure rows: GM Core pg. 253–254, Grand Bazaar, Tian Xia Character Guide, Highhelm, Legends, Pathfinder #162 and #183, and The Dead God's Hand. Dragonhide, dreamweb and sloughstone give no structure numbers.
+  - A window is Glass (1, 4, BT 2), as the user asked. GM Core's own example of a window pane is thin glass (0, 1), which is in the material menu.
+- **Locks:** a Foundry door's lock is its door state. While it's locked, its lock is the one picked in its settings, or a simple one. Opening the lock (picked or forced) closes the door, and the successes start afresh.
+- **Its door and icon:**
+  - A player's right-click on its door control, or the GM's Shift+right-click, opens the menu (`DoorControl._onRightDown`, wrapped through libWrapper when it's active). The GM's plain right-click still locks and unlocks.
+  - A player's left-click on it while it's locked tells them about the menu, once.
+  - Walls and windows with no door get the module's own icon at their middle, on the controls layer. The GM always sees it. A player sees it when the wall is in sight (the door control's own test), unless the "Players see breakable walls" setting is off.
+- **The actor:** a PF2e hazard for each kind and material, in the world's "Environment: structures" folder. It has GM Core's Hardness and Hit Points and object immunities. Its tokens are unlinked, so each keeps its own Hit Points. PF2e's own damage takes Hardness off (halved for adamantine). PF2e hazards don't store a Broken Threshold, so it comes from the structure's kind or material.
 - **AC:** no rule gives an unattended object an AC (GM Core lists only Climb DC and Hardness, HP and BT), so it's 10 unless the GM sets another in the tab.
-- **On a wall:** a structure placed with walls selected on the Walls layer is linked to its wall (`flags["pf2e-automatic-environment-resolution"].structure.wall`):
+- **On a wall:**
   - At or below its Broken Threshold it gets PF2e's broken condition, and a locked door's lock no longer holds (locked becomes closed).
   - At 0 Hit Points it's destroyed (the dead marker), and the wall stops blocking: its movement, sight, light, sound and door settings are kept in `saved` and set to none.
   - Raised above 0 again (the tab's Repair), the wall gets them back.

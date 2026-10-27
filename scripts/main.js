@@ -15,7 +15,8 @@ import { installTerrainCost } from "./terrain-cost.js";
 import { windMoveGate } from "./wind.js";
 import { onSpellCast, targetFlatCheck } from "./spells.js";
 import { syncVisuals, visualsOf } from "./visuals.js";
-import { onStructureActor, placeStructures, postStructureCard, structureTokens } from "./structures.js";
+import { onStructureActor, onStructureRequest, onStructureToken, onWallDeleted, placeStructures, postStructureCard, sceneStructures, structureRecord } from "./structures.js";
+import { drawStructureIcons, injectWallConfig, installDoorControls, openStructureMenu, refreshStructureIcons, stripUnusedStructure } from "./structure-ui.js";
 import { disasterCard } from "../../pf2e-resolution-core/src/environment/disasters.js";
 import { DAMAGE_CATEGORIES, setCategoryDefaults } from "../../pf2e-resolution-core/src/environment/catalog.js";
 import { creatureEffect, flatCheckFor, normalizeState } from "../../pf2e-resolution-core/src/environment/weather.js";
@@ -30,6 +31,15 @@ Hooks.once("init", () => {
         config: true,
         type: Number,
         default: 3600
+    });
+    game.settings.register(MODULE_ID, "structureIcons", {
+        name: "Players see breakable walls",
+        hint: "A wall or window the GM made breakable (its Structure section) shows an icon to players who can see it, to Strike it, force it open or climb it. Doors use their own control. Off: only the GM sees the icons.",
+        scope: "world",
+        config: true,
+        type: Boolean,
+        default: true,
+        onChange: () => refreshStructureIcons()
     });
     for (const [key, category] of Object.entries(DAMAGE_CATEGORIES)) {
         game.settings.register(MODULE_ID, `dice.${key}`, {
@@ -66,7 +76,9 @@ Hooks.once("ready", () => {
         // (Doors, walls and portcullises to target and break, and their checks — scripts/structures.js.)
         placeStructures,
         postStructureCard,
-        structures: (scene = canvas?.scene) => structureTokens(scene),
+        structures: (scene = canvas?.scene) => sceneStructures(scene),
+        structure: structureRecord,
+        openStructureMenu,
         rules: Object.freeze({ creatureEffect, flatCheckFor, normalizeState })
     });
     if (isActiveGM() && canvas?.scene) syncScene(canvas.scene);
@@ -80,7 +92,22 @@ Hooks.on("preMoveToken", (token, movement, options) => windMoveGate(token, movem
 
 Hooks.on("canvasReady", (canvas) => {
     if (isActiveGM()) syncScene(canvas.scene);
+    drawStructureIcons();
 });
+
+// (Breakable walls — scripts/structure-ui.js: their settings' section, their doors' right-click, their own icons; Foundry's other walls
+// untouched.)
+Hooks.once("setup", () => installDoorControls());
+Hooks.on("renderWallConfig", (app, html) => injectWallConfig(app, html));
+Hooks.on("preUpdateWall", (wall, change) => stripUnusedStructure(wall, change));
+const wallsChanged = (wall) => wall?.parent === canvas?.scene && drawStructureIcons();
+Hooks.on("createWall", wallsChanged);
+Hooks.on("updateWall", wallsChanged);
+Hooks.on("deleteWall", (wall) => {
+    wallsChanged(wall);
+    onWallDeleted(wall).catch((error) => console.warn(`${MODULE_ID} |`, error));
+});
+Hooks.on("sightRefresh", () => refreshStructureIcons());
 
 // (The scene's weather or shelter changed: every creature on it. The clock alone moving doesn't count. Its weather's look too:
 // scripts/visuals.js, which changes nothing while the look stays.)
@@ -123,6 +150,7 @@ Hooks.on("updateActor", (actor, change) => onStructureActor(actor, change));
 
 Hooks.on("createToken", (token) => {
     if (isActiveGM()) syncToken(token);
+    onStructureToken(token);
 });
 Hooks.on("deleteToken", (token) => {
     // (A linked actor taken off the scene: its weather goes with it, unless another of its tokens is still out.)
@@ -139,6 +167,7 @@ Hooks.on("createChatMessage", (message) => {
     onRollMessage(message).catch((error) => console.error(`${MODULE_ID} |`, error));
     onBreathMessage(message).catch((error) => console.error(`${MODULE_ID} |`, error));
     onSpellCast(message).catch((error) => console.error(`${MODULE_ID} |`, error));
+    onStructureRequest(message).catch((error) => console.error(`${MODULE_ID} |`, error));
 });
 Hooks.on("renderChatMessageHTML", (message, html) => bindCard(message, html));
 

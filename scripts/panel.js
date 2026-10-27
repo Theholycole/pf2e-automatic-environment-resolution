@@ -3,8 +3,8 @@
 
 import { MODULE_ID, escapeHTML, sceneData, setSceneState, setSheltered } from "./foundry.js";
 import { DAMAGE_CATEGORIES, DIRECTIONS, DISASTERS, FEATURES, FORCE_OPEN, LOCKS, STRUCTURES, TEMPERATURES, WEATHER, temperatureFromFahrenheit } from "../../pf2e-resolution-core/src/environment/catalog.js";
-import { STRUCTURE_AC, forceOpenDC, structureType } from "../../pf2e-resolution-core/src/environment/structures.js";
-import { placeStructures, postStructureCard, repairStructure, structureOf, structureTokens } from "./structures.js";
+import { STRUCTURE_AC, STRUCTURE_KINDS, forceOpenDC, materialChoices, structureStats } from "../../pf2e-resolution-core/src/environment/structures.js";
+import { hitPointsOf, lockOf, placeStructures, postStructureCard, repairStructure, sceneStructures } from "./structures.js";
 import { bandDC, disasterCard, disasterCategories } from "../../pf2e-resolution-core/src/environment/disasters.js";
 import { FEATURE_GROUPS, featureRules } from "../../pf2e-resolution-core/src/environment/terrain.js";
 import { creatureEffect, normalizeState } from "../../pf2e-resolution-core/src/environment/weather.js";
@@ -180,26 +180,35 @@ export class EnvironmentApp extends ApplicationV2 {
 
     #structuresTab() {
         const lockOptions = (name, value) => `<select name="${name}">${option("", "No lock", value ?? "")}${Object.entries(LOCKS).map(([key, lock]) => option(key, `${lock.label} (DC ${lock.dc}, ${lock.successes} successes)`, value)).join("")}</select>`;
-        const rows = Object.entries(STRUCTURES).map(([key, entry]) => `<tr><td>${escapeHTML(entry.label)}</td><td>${entry.climb}</td><td>${entry.hardness}, ${entry.hp} (${entry.bt})</td><td>${entry.force ?? ""}${entry.downtime ? "Needs downtime and tools" : ""}</td>
-            <td class="pf2e-env-buttons"><button type="button" data-action="place" data-kind="${key}" title="On each selected wall, or the middle of the view"><i class="fa-solid fa-chess-rook"></i> Place</button><button type="button" data-action="structureCheck" data-how="climb" data-kind="${key}" title="Climb, for the selected creatures"><i class="fa-solid fa-person-hiking"></i> Climb</button>${entry.force ? `<button type="button" data-action="structureCheck" data-how="force" data-kind="${key}" title="Lift it, for the selected creatures"><i class="fa-solid fa-hand-fist"></i> Lift</button>` : ""}</td></tr>`).join("");
+        const groups = new Map();
+        for (const choice of materialChoices()) {
+            if (!groups.has(choice.group)) groups.set(choice.group, []);
+            groups.get(choice.group).push(option(choice.key, `${choice.label} (${choice.hardness}, ${choice.hp}${choice.bt ? `, BT ${choice.bt}` : ""})`, ""));
+        }
+        const materials = `<select name="structures.material">${option("", "Its kind's own", "")}${[...groups].map(([group, options]) => `<optgroup label="${escapeHTML(group)}">${options.join("")}</optgroup>`).join("")}</select>`;
+        const rows = Object.entries(STRUCTURE_KINDS).map(([key, entry]) => {
+            const stats = structureStats({ kind: key });
+            return `<tr><td>${escapeHTML(entry.label)}</td><td>${stats.climb ?? "—"}</td><td>${stats.hardness}, ${stats.hp} (${stats.bt})</td><td>${entry.force ?? ""}${entry.downtime ? "Needs downtime and tools" : ""}</td>
+            <td class="pf2e-env-buttons"><button type="button" data-action="place" data-kind="${key}" title="On each selected wall, or the middle of the view"><i class="fa-solid fa-chess-rook"></i> Place</button>${stats.climb ? `<button type="button" data-action="structureCheck" data-how="climb" data-kind="${key}" title="Climb, for the selected creatures"><i class="fa-solid fa-person-hiking"></i> Climb</button>` : ""}${entry.force ? `<button type="button" data-action="structureCheck" data-how="force" data-kind="${key}" title="Lift it, for the selected creatures"><i class="fa-solid fa-hand-fist"></i> Lift</button>` : ""}</td></tr>`;
+        }).join("");
         const force = Object.entries(FORCE_OPEN).filter(([key]) => !STRUCTURES[key]).map(([key, entry]) => `<tr><td>${escapeHTML(entry.label)}</td><td>${entry.dc}</td><td><button type="button" data-action="structureCheck" data-how="force" data-kind="${key}"><i class="fa-solid fa-hand-fist"></i> Force Open (selected)</button></td></tr>`).join("");
-        const placed = structureTokens(this.scene).map((token) => {
-            const flag = structureOf(token);
-            const hp = token.actor?.system?.attributes?.hp ?? {};
-            const lock = LOCKS[flag.lock];
-            const state = [{ intact: "", broken: "Broken", destroyed: "Destroyed" }[flag.condition], lock ? (flag.unlocked ? `${lock.label}: open` : `${lock.label}: ${flag.successes ?? 0} of ${lock.successes} successes`) : "", flag.jammed ? "Jammed (−2)" : "", flag.wall ? "On a wall" : ""].filter(Boolean).join(" · ");
-            const type = structureType(flag.kind);
-            const dc = forceOpenDC(flag.kind, { lock: flag.unlocked ? null : flag.lock });
-            return `<tr><td>${escapeHTML(token.name)}</td><td>${hp.value ?? "?"}/${hp.max ?? "?"} (BT ${flag.bt})</td><td class="hint">${escapeHTML(state)}</td>
-                <td class="pf2e-env-buttons">${type !== "wall" ? `<input type="number" name="structure.${token.id}.dc" value="${dc}" title="Force Open DC" style="width:3.5em"><button type="button" data-action="structureCheck" data-how="force" data-token="${token.id}"><i class="fa-solid fa-hand-fist"></i> ${type === "portcullis" ? "Lift" : "Force Open"}</button>` : ""}${lock && !flag.unlocked ? `<button type="button" data-action="structureCheck" data-how="lock" data-token="${token.id}"><i class="fa-solid fa-unlock"></i> Pick the lock</button>` : ""}<button type="button" data-action="structureCheck" data-how="climb" data-token="${token.id}"><i class="fa-solid fa-person-hiking"></i> Climb</button><button type="button" data-action="repair" data-token="${token.id}" title="Back to full Hit Points"><i class="fa-solid fa-hammer"></i> Repair</button></td></tr>`;
+        const placed = sceneStructures(this.scene).map((entry) => {
+            const { data, stats } = entry;
+            const hp = hitPointsOf(entry);
+            const lock = lockOf(entry);
+            const id = entry.holder.uuid;
+            const state = [{ broken: "Broken", destroyed: "Destroyed" }[data.condition], lock ? `${LOCKS[lock]?.label ?? lock}: ${data.successes ?? 0} of ${LOCKS[lock]?.successes ?? "?"} successes` : "", data.jammed ? "Jammed (−2)" : "", entry.wall ? (entry.token ? "Wall, with its token" : "Wall") : "Token"].filter(Boolean).join(" · ");
+            const dc = forceOpenDC(data.kind, { lock, stuck: data.stuck || "stuck" });
+            return `<tr><td>${escapeHTML(entry.name)}</td><td>${hp.value}/${hp.max} (BT ${stats.bt})</td><td class="hint">${escapeHTML(state)}</td>
+                <td class="pf2e-env-buttons">${stats.type !== "wall" ? `<input type="number" name="structure.${entry.holder.id}.dc" value="${dc}" title="Force Open DC" style="width:3.5em"><button type="button" data-action="structureCheck" data-how="force" data-structure="${id}"><i class="fa-solid fa-hand-fist"></i> ${stats.type === "portcullis" ? "Lift" : "Force Open"}</button>` : ""}${lock ? `<button type="button" data-action="structureCheck" data-how="lock" data-structure="${id}"><i class="fa-solid fa-unlock"></i> Pick the lock</button>` : ""}${stats.climb ? `<button type="button" data-action="structureCheck" data-how="climb" data-structure="${id}"><i class="fa-solid fa-person-hiking"></i> Climb</button>` : ""}<button type="button" data-action="repair" data-structure="${id}" title="Back to full Hit Points"><i class="fa-solid fa-hammer"></i> Repair</button></td></tr>`;
         }).join("");
         return `<fieldset class="pf2e-env-toggle on"><legend>Place a structure to target</legend>
-                <div class="pf2e-env-row"><label>AC <input type="number" name="structures.ac" value="${STRUCTURE_AC}" style="width:3.5em"></label><label>Lock (doors, portcullises) ${lockOptions("structures.lock", "")}</label><label title="How far a creature that critically fails to climb falls (0: from the ground, it lands prone)">Climbed <input type="number" min="0" step="5" name="structures.height" value="0" style="width:3.5em"> ft</label></div>
-                <p class="hint">Select walls or doors on the Walls layer first: one goes on each and follows it — broken, its lock no longer holds; destroyed, the wall stops blocking until it's repaired. Without walls selected it goes at the middle of the view. Players target it and Strike it; PF2e takes its Hardness off the damage. No rule gives an object an AC: 10 unless you change it. Checks go to the creatures you select.</p></fieldset>
+                <div class="pf2e-env-row"><label>Material ${materials}</label><label>AC <input type="number" name="structures.ac" value="${STRUCTURE_AC}" style="width:3.5em"></label><label>Lock ${lockOptions("structures.lock", "")}</label><label title="How far a creature that critically fails to climb falls (0: from the ground, it lands prone)">Climbed <input type="number" min="0" step="5" name="structures.height" value="0" style="width:3.5em"> ft</label></div>
+                <p class="hint">Foundry's walls stay ordinary walls until you make one breakable: in its settings (its Structure section), or here — select walls, doors or windows on the Walls layer, then Place. A breakable wall keeps its own Hit Points: broken, its door's lock no longer holds; destroyed, it stops blocking until it's repaired. Players right-click its door, or its icon on a wall or window, to Strike it, force it open, pick its lock or climb it. Without walls selected, Place puts a token at the middle of the view. PF2e takes its Hardness off the damage. No rule gives an object an AC: 10 unless you change it. Checks here go to the creatures you select.</p></fieldset>
             <table class="pf2e-env-table"><thead><tr><th>Structure</th><th>Climb DC</th><th>Hardness, HP (BT)</th><th>Lift DC</th><th></th></tr></thead><tbody>${rows}</tbody></table>
             <h4>Forcing open (no lock)</h4><table class="pf2e-env-table"><thead><tr><th>Structure</th><th>Force Open DC</th><th></th></tr></thead><tbody>${force}</tbody></table>
             <p class="hint">A lock's Force Open DC is its Thievery DC + 5. Lifting a portcullis: the lock's DC or the table's, whichever is higher.</p>
-            <fieldset class="pf2e-env-toggle on"><legend>Structures on this scene</legend>${placed ? `<table class="pf2e-env-table"><tbody>${placed}</tbody></table>` : "<p class='hint'>None placed yet.</p>"}</fieldset>`;
+            <fieldset class="pf2e-env-toggle on"><legend>Structures on this scene</legend>${placed ? `<table class="pf2e-env-table"><tbody>${placed}</tbody></table>` : "<p class='hint'>None yet.</p>"}</fieldset>`;
     }
 
     // --- Actions ---
@@ -306,19 +315,19 @@ export class EnvironmentApp extends ApplicationV2 {
 
     static async #onPlace(event, target) {
         if (canvas?.scene !== this.scene) return ui.notifications.warn("View this scene to place a structure on it.");
-        const created = await placeStructures(this.scene, target.dataset.kind, { ac: Number(this.#value("structures.ac") ?? STRUCTURE_AC), lock: this.#value("structures.lock") });
-        if (created.length) ui.notifications.info(`${created.length} × ${STRUCTURES[target.dataset.kind].label} placed.`);
+        const created = await placeStructures(this.scene, target.dataset.kind, { ac: Number(this.#value("structures.ac") ?? STRUCTURE_AC), lock: this.#value("structures.lock"), material: this.#value("structures.material") });
+        if (created.length) ui.notifications.info(`${created.length} × ${structureStats({ kind: target.dataset.kind, material: this.#value("structures.material") }).label} placed.`);
         this.render();
     }
 
     static async #onStructureCheck(event, target) {
-        const token = target.dataset.token ? this.scene.tokens.get(target.dataset.token) : null;
-        const typed = token ? Number(this.#value(`structure.${token.id}.dc`)) : NaN;
-        await postStructureCard(target.dataset.kind ?? null, target.dataset.how, { token, dc: target.dataset.how === "force" && Number.isFinite(typed) && typed > 0 ? typed : null, height: Number(this.#value("structures.height")) || 0 });
+        const structure = target.dataset.structure ? fromUuidSync(target.dataset.structure) : null;
+        const typed = structure ? Number(this.#value(`structure.${structure.id}.dc`)) : NaN;
+        await postStructureCard(target.dataset.kind ?? null, target.dataset.how, { target: structure, dc: target.dataset.how === "force" && Number.isFinite(typed) && typed > 0 ? typed : null, height: Number(this.#value("structures.height")) || 0 });
     }
 
     static async #onRepair(event, target) {
-        await repairStructure(this.scene.tokens.get(target.dataset.token));
+        await repairStructure(fromUuidSync(target.dataset.structure));
         setTimeout(() => this.render(), 500);
     }
 

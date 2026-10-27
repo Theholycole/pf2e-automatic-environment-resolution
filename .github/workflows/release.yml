@@ -23,7 +23,7 @@ jobs:
           mv module.json.tmp module.json
 
       - name: Zip the module
-        run: zip -r module.zip module.json LICENSE README.md scripts styles
+        run: zip -r module.zip module.json LICENSE README.md scripts styles icons
 
       - name: Attach module.json and module.zip to the release
         env:
