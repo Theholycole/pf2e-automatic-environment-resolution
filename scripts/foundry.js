@@ -106,7 +106,8 @@ export function weatherIgnoresOf(actor) {
 // (2026-10-25/26, with the item module's session.) What eases its falls: [{ shorter?: feet, noDamage?: true, landsOnFeet?: true, source }],
 // from its Effects that haven't run out with flags[MODULE_ID].fall (a Tumbler's Belt's reaction, a Dragonaut's Wingsuit's minute), and from
 // the item module's api.fallEases(actor) for what it wears or invests (Gliding Membranes, Soft-Landing).
-const eases = (entry) => entry && (entry.noDamage || entry.landsOnFeet || Number(entry.shorter) > 0 || Number(entry.reduceBy) > 0);
+// (2026-10-27: halved, a Parachute Mail deployed low — half the damage left, the core's easedFall.)
+const eases = (entry) => entry && (entry.noDamage || entry.landsOnFeet || entry.halved || Number(entry.shorter) > 0 || Number(entry.reduceBy) > 0);
 export function fallEasesOf(actor) {
     const fromEffects = (actor?.itemTypes?.effect ?? []).filter((effect) => !(effect.isExpired ?? effect.system?.expired)).map((effect) => effect.flags?.[MODULE_ID]?.fall).filter(eases);
     let fromItems = [];

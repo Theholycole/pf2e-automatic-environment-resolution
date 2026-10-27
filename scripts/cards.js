@@ -151,7 +151,7 @@ async function applyRow(token, row, state) {
     const fall = fallFeet === null ? null : easedFall(fallFeet, fallEasesOf(actor));
     if (fall?.damage) parts.push(`${fall.damage}[bludgeoning]`);
     if (fall?.by) {
-        const reduced = fall.reductions.map((entry) => `${entry.amount} less from ${escapeHTML(entry.source ?? "an item")}`).join(", ");
+        const reduced = [...fall.reductions.map((entry) => `${entry.amount} less from ${escapeHTML(entry.source ?? "an item")}`), ...(fall.halved ? [`halved by ${escapeHTML(fall.halved)}`] : [])].join(", ");
         await noteToGM(`<p>${escapeHTML(token.name)}'s fall: ${fallFeet} feet, ${fall.damage ? `${fall.feet === fallFeet ? "" : `as if ${fall.feet}, `}${fall.damage} damage` : "no damage"}${reduced ? ` (${reduced})` : ""} (${escapeHTML(fall.by)}).</p>`, { title: "Falling" });
     }
     const live = parts.filter((part) => !part.startsWith("0["));
@@ -166,7 +166,7 @@ async function applyRow(token, row, state) {
     // (A structure's card: what the degree does to it — opened, broken open, jammed, a success toward its lock. scripts/structures.js.)
     if (row.structure && state.structure) await applyStructure(state.structure, row.structure);
     // (2026-10-26, for the item module: the fall done — an Impact Foam Chassis used up, its foam around the creature.)
-    if (fall) Hooks.callAll(`${MODULE_ID}.fell`, { token, feet: fallFeet, damage: fall.before, applied: fall.damage, reductions: fall.reductions });
+    if (fall) Hooks.callAll(`${MODULE_ID}.fell`, { token, feet: fallFeet, damage: fall.before, applied: fall.damage, reductions: fall.reductions, halved: fall.halved ?? null });
     if (row.buried) await buryCreature(token, { snow: row.buried.snow, title: state.title, dc: state.check?.dc ?? 20, airless: Boolean(state.airless) });
     // (A failed Balance: back where its move started.)
     if (row.returnTo) await (token.document ?? token).update({ x: row.returnTo.x, y: row.returnTo.y, elevation: row.returnTo.elevation }, { teleport: true, animate: false, [MODULE_ID]: { forced: true } });
