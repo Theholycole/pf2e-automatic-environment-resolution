@@ -8,6 +8,7 @@ import { STRUCTURE } from "./structures.js";
 import { STRUCTURE_KINDS, pushedOut, structureLayout } from "../../pf2e-resolution-core/src/environment/structures.js";
 
 const NORMAL = 20;
+const NONE = 0;
 const DOOR = { NONE: 0, DOOR: 1 };
 const STATE = { CLOSED: 0, LOCKED: 2 };
 
@@ -44,7 +45,9 @@ function partState(part, defaults) {
  *   north–south), height? (feet, kept for its Climb), kind? (a wall kind, "wall-masonry" when none), material?, stats? { hardness, hp, bt },
  *   door?: { side?, feet?, kind? ("door-iron" when none), material?, stats?, lock? (a GM Core lock key, or { dc, successes }), forceOpen?
  *   (its own Force Open DC), locked? (true when it has a lock) },
- *   pushOut? (true, or { except: [token ids] }; a square's default: true), source? { actorUuid, itemUuid, name }
+ *   pushOut? (true, or { except: [token ids] }; a square's default: true), source? { actorUuid, itemUuid, name },
+ *   transparent? (2026-10-27, the item module's Cube of Force and Cube of Nex — walls of force: they stop movement only, sight, light and
+ *   sound pass; invisible the same)
  * }. → { id, walls: [wall ids], door: wall id | null, pushed: [token ids] }.
  */
 export async function placeStructure(scene, template = {}) {
@@ -58,6 +61,7 @@ export async function placeStructure(scene, template = {}) {
     const placed = { id, name: template.name ?? "Structure", source: template.source ?? null };
     const height = Number(template.height) > 0 ? Number(template.height) : null;
     const wallState = partState(template, { kind: "wall-masonry" });
+    const senses = template.transparent || template.invisible ? NONE : NORMAL;
     const doorState = template.door ? partState({ kind: "door-iron", ...template.door }, { kind: "door-iron" }) : null;
     const data = layout.walls.map((wall) => {
         const state = wall.door && doorState ? doorState : wallState;
@@ -65,12 +69,12 @@ export async function placeStructure(scene, template = {}) {
         return {
             c: wall.c.map((value) => Math.round(value)),
             move: NORMAL,
-            sight: NORMAL,
-            light: NORMAL,
-            sound: NORMAL,
+            sight: senses,
+            light: senses,
+            sound: senses,
             door: wall.door && doorState ? DOOR.DOOR : DOOR.NONE,
             ds: locked ? STATE.LOCKED : STATE.CLOSED,
-            flags: { [MODULE_ID]: { [STRUCTURE]: { ...state, name: wall.door && doorState ? `${placed.name}: door` : `${placed.name}: ${wall.side === "line" ? "wall" : `${wall.side} wall`}`, height, placed } } }
+            flags: { [MODULE_ID]: { [STRUCTURE]: { ...state, name: wall.door && doorState ? `${placed.name}: door` : `${placed.name}: ${wall.side === "line" ? "wall" : `${wall.side} wall`}`, height, placed, ...(senses === NONE ? { transparent: true } : {}) } } }
         };
     });
     // (The creatures in its space out first, so no wall is made through one.)
