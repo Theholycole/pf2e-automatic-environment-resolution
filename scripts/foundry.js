@@ -107,7 +107,8 @@ export function weatherIgnoresOf(actor) {
 // from its Effects that haven't run out with flags[MODULE_ID].fall (a Tumbler's Belt's reaction, a Dragonaut's Wingsuit's minute), and from
 // the item module's api.fallEases(actor) for what it wears or invests (Gliding Membranes, Soft-Landing).
 // (2026-10-27: halved, a Parachute Mail deployed low — half the damage left, the core's easedFall.)
-const eases = (entry) => entry && (entry.noDamage || entry.landsOnFeet || entry.halved || Number(entry.shorter) > 0 || Number(entry.reduceBy) > 0);
+// (2026-10-29: nonlethal and landCheck, Impact Jelly's square — the core's easedFall.)
+const eases = (entry) => entry && (entry.noDamage || entry.landsOnFeet || entry.halved || entry.nonlethal || entry.landCheck || Number(entry.shorter) > 0 || Number(entry.reduceBy) > 0);
 export function fallEasesOf(actor) {
     const fromEffects = (actor?.itemTypes?.effect ?? []).filter((effect) => !(effect.isExpired ?? effect.system?.expired)).map((effect) => effect.flags?.[MODULE_ID]?.fall).filter(eases);
     let fromItems = [];
@@ -173,6 +174,34 @@ export async function persistentDamage(actor, formula, type, token = null) {
     if (!actor || !DamageRoll || !formula) return;
     const roll = await new DamageRoll(`(${formula})[persistent,${type}]`).evaluate();
     await actor.applyDamage({ damage: roll, token: token?.document ?? token ?? undefined });
+}
+
+// (2026-10-29, the item module's Impact Jelly.) Nonlethal damage: PF2e's own applied, then, when it's what drops it to 0 Hit Points,
+// knocked out instead of dying (Player Core): unconscious, and no dying, dead mark or defeat PF2e gave it. → true when knocked out.
+export async function nonlethalDamage(actor, formula, token = null) {
+    const DamageRoll = damageRollClass();
+    if (!actor || !DamageRoll || !formula) return false;
+    const hp = () => Number(actor.hitPoints?.value ?? actor.system?.attributes?.hp?.value);
+    const before = hp();
+    const doc = token?.document ?? token ?? null;
+    const defeated = Boolean(doc?.combatant?.isDefeated);
+    const roll = await new DamageRoll(formula).evaluate();
+    await actor.applyDamage({ damage: roll, token: doc ?? undefined, rollOptions: new Set(["nonlethal", "damage:trait:nonlethal"]) });
+    if (!(before > 0) || hp() > 0) return false;
+    for (const condition of (actor.itemTypes?.condition ?? []).filter((entry) => entry.slug === "dying")) await condition.delete().catch(() => null);
+    if (!defeated && doc?.combatant?.isDefeated) await doc.combatant.update({ defeated: false });
+    if (actor.statuses?.has?.("dead")) await actor.toggleStatusEffect?.("dead", { active: false, overlay: true }).catch(() => null);
+    if (!actor.hasCondition?.("unconscious")) await actor.increaseCondition?.("unconscious");
+    return true;
+}
+
+// (2026-10-29, Impact Jelly.) A check to land standing after a fall that hurt: the creature's best of the statistics against the DC, PF2e's
+// roll and message (on the GM's client — it has nothing to lose by it). → true on a success.
+export async function landStanding(actor, check) {
+    const best = (check?.statistics ?? []).map((slug) => actor?.getStatistic?.(slug)).filter(Boolean).reduce((most, statistic) => (!most || Number(statistic.mod) > Number(most.mod) ? statistic : most), null);
+    if (!best || !Number.isFinite(Number(check.dc))) return false;
+    const roll = await best.roll({ dc: { value: Number(check.dc), label: `${check.source ?? "Falling"}: land standing` }, skipDialog: true, extraRollOptions: ["environment", "environment:land-standing"] });
+    return Number(roll?.degreeOfSuccess) >= 2;
 }
 
 // (2026-10-25: creatures only — PF2e's loot actors can't hold an Effect, and the weather has nothing for a trap.)

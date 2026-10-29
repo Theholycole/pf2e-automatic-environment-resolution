@@ -2,7 +2,7 @@
 // rolled once as it's posted; each creature rolls its own save or check from the card (its owner or the GM; the result comes back through
 // PF2e's roll message, matched by its identifier); the GM's Apply does what each degree says. State in the message's flags.
 
-import { MODULE_ID, dealDamage, escapeHTML, fallEasesOf, isActiveGM, noteToGM, persistentDamage } from "./foundry.js";
+import { MODULE_ID, dealDamage, escapeHTML, fallEasesOf, isActiveGM, landStanding, nonlethalDamage, noteToGM, persistentDamage } from "./foundry.js";
 import { easedFall } from "../../pf2e-resolution-core/src/environment/disasters.js";
 import { pushToken } from "./movement.js";
 import { buryCreature, freeCreature } from "./burial.js";
@@ -149,9 +149,10 @@ async function applyRow(token, row, state) {
     // (A fall, eased by what the creature has on it — the item module's Effects: a Tumbler's Belt's feet off, a wingsuit's no damage.)
     const fallFeet = row.falls?.feet ?? row.pickedUp?.falling ?? null;
     const fall = fallFeet === null ? null : easedFall(fallFeet, fallEasesOf(actor));
-    if (fall?.damage) parts.push(`${fall.damage}[bludgeoning]`);
+    // (2026-10-29, Impact Jelly: a nonlethal fall's damage on its own, after the rest — knocked out, not dying, when it's what drops it.)
+    if (fall?.damage && !fall.nonlethal) parts.push(`${fall.damage}[bludgeoning]`);
     if (fall?.by) {
-        const reduced = [...fall.reductions.map((entry) => `${entry.amount} less from ${escapeHTML(entry.source ?? "an item")}`), ...(fall.halved ? [`halved by ${escapeHTML(fall.halved)}`] : [])].join(", ");
+        const reduced = [...fall.reductions.map((entry) => `${entry.amount} less from ${escapeHTML(entry.source ?? "an item")}`), ...(fall.halved ? [`halved by ${escapeHTML(fall.halved)}`] : []), ...(fall.nonlethal ? [`nonlethal by ${escapeHTML(fall.nonlethal)}`] : []), ...(fall.landCheck ? [`a DC ${fall.landCheck.dc} check to land standing`] : [])].join(", ");
         await noteToGM(`<p>${escapeHTML(token.name)}'s fall: ${fallFeet} feet, ${fall.damage ? `${fall.feet === fallFeet ? "" : `as if ${fall.feet}, `}${fall.damage} damage` : "no damage"}${reduced ? ` (${reduced})` : ""} (${escapeHTML(fall.by)}).</p>`, { title: "Falling" });
     }
     const live = parts.filter((part) => !part.startsWith("0["));
@@ -160,13 +161,17 @@ async function applyRow(token, row, state) {
         const roll = await new DamageRoll(live.length === 1 ? live[0] : `{${live.join(",")}}`).evaluate();
         await actor.applyDamage({ damage: roll, token });
     }
+    const knockedOut = fall?.damage > 0 && fall.nonlethal ? await nonlethalDamage(actor, `${fall.damage}[bludgeoning]`, token) : false;
     if (row.persistent) await persistentDamage(actor, row.persistent.formula, row.persistent.type, token);
     for (const condition of row.conditions ?? []) await actor.increaseCondition?.(condition.slug);
-    if (fall?.prone) await actor.increaseCondition?.("prone");
+    // (Its check to land standing, Impact Jelly's: rolled when the fall would leave it prone and it's still awake; standing on a success.)
+    const standing = fall?.prone && fall.landCheck && !knockedOut ? await landStanding(actor, fall.landCheck) : false;
+    if (fall?.prone && !standing) await actor.increaseCondition?.("prone");
     // (A structure's card: what the degree does to it — opened, broken open, jammed, a success toward its lock. scripts/structures.js.)
     if (row.structure && state.structure) await applyStructure(state.structure, row.structure);
     // (2026-10-26, for the item module: the fall done — an Impact Foam Chassis used up, its foam around the creature.)
-    if (fall) Hooks.callAll(`${MODULE_ID}.fell`, { token, feet: fallFeet, damage: fall.before, applied: fall.damage, reductions: fall.reductions, halved: fall.halved ?? null });
+    // (2026-10-29: and nonlethal, its source or null; knockedOut; standing — landed standing on its check.)
+    if (fall) Hooks.callAll(`${MODULE_ID}.fell`, { token, feet: fallFeet, damage: fall.before, applied: fall.damage, reductions: fall.reductions, halved: fall.halved ?? null, nonlethal: fall.nonlethal ?? null, knockedOut, standing });
     if (row.buried) await buryCreature(token, { snow: row.buried.snow, title: state.title, dc: state.check?.dc ?? 20, airless: Boolean(state.airless) });
     // (A failed Balance: back where its move started.)
     if (row.returnTo) await (token.document ?? token).update({ x: row.returnTo.x, y: row.returnTo.y, elevation: row.returnTo.elevation }, { teleport: true, animate: false, [MODULE_ID]: { forced: true } });

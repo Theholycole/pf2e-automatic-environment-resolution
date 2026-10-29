@@ -76,9 +76,46 @@ test("what eases a creature's falls: its Effects' fall flags that haven't run ou
     const fall = (entry, extra = {}) => ({ flags: { "pf2e-automatic-environment-resolution": { fall: entry } }, ...extra });
     const actor = { itemTypes: { effect: [fall({ shorter: 120, source: "Tumbler's Belt" }), fall({ noDamage: true, source: "Dragonaut's Wingsuit" }, { isExpired: true }), fall({ shorter: 0, source: "nothing" }), { flags: {} }] } };
     assert.deepEqual(fallEasesOf(actor).map((entry) => entry.source), ["Tumbler's Belt"]);
-    globalThis.game.modules = new Map([["pf2e-automatic-item-resolution", { active: true, api: { fallEases: () => [{ shorter: 25, source: "Gliding Membranes" }, { landsOnFeet: true, source: "Cat" }, { source: "nothing" }] } }]]);
-    assert.deepEqual(fallEasesOf(actor).map((entry) => entry.source), ["Tumbler's Belt", "Gliding Membranes", "Cat"]);
+    globalThis.game.modules = new Map([["pf2e-automatic-item-resolution", { active: true, api: { fallEases: () => [{ shorter: 25, source: "Gliding Membranes" }, { landsOnFeet: true, source: "Cat" }, { source: "nothing" }, { nonlethal: true, landCheck: { statistics: ["athletics"], dc: 10 }, source: "Jelly" }] } }]]);
+    assert.deepEqual(fallEasesOf(actor).map((entry) => entry.source), ["Tumbler's Belt", "Gliding Membranes", "Cat", "Jelly"]);
     globalThis.game.modules = new Map();
+});
+
+test("2026-10-29, Impact Jelly: a nonlethal fall knocks out instead of dying; the best statistic rolls to land standing", async () => {
+    const { landStanding, nonlethalDamage } = await import("../scripts/foundry.js");
+    const done = [];
+    globalThis.CONFIG = { Dice: { rolls: [class DamageRoll { constructor(formula) { this.formula = formula; } async evaluate() { return this; } }] } };
+    const creature = (hp, extra = {}) => {
+        const actor = { hitPoints: { value: hp }, statuses: new Set(), conditions: [], itemTypes: { condition: [{ slug: "dying", delete: async () => done.push("dying off") }] },
+            async applyDamage({ damage, rollOptions, token }) {
+                done.push(`${damage.formula} ${[...rollOptions].join(" ")}`);
+                actor.hitPoints.value = Math.max(0, actor.hitPoints.value - parseInt(damage.formula, 10));
+                // (PF2e's at 0: no dying or unconscious, so dead, and an NPC's combatant defeated.)
+                if (!actor.hitPoints.value) (actor.statuses.add("dead"), token?.combatant && (token.combatant.isDefeated = true));
+            },
+            async toggleStatusEffect(slug, { active }) { if (!active) actor.statuses.delete(slug); done.push(`${slug} ${active}`); },
+            hasCondition: (slug) => actor.conditions.includes(slug), async increaseCondition(slug) { actor.conditions.push(slug); }, ...extra };
+        return actor;
+    };
+    const combatant = { isDefeated: false, async update({ defeated }) { done.push(`defeated ${defeated}`); combatant.isDefeated = defeated; } };
+    const dropped = creature(10);
+    const token = { combatant, get document() { return this; } };
+    assert.equal(await nonlethalDamage(dropped, "15[bludgeoning]", token), true);
+    assert.deepEqual(dropped.conditions, ["unconscious"]);
+    assert.deepEqual(done, ["15[bludgeoning] nonlethal damage:trait:nonlethal", "dying off", "defeated false", "dead false"]);
+    assert.equal(combatant.isDefeated, false);
+    const hurt = creature(30);
+    assert.equal(await nonlethalDamage(hurt, "15[bludgeoning]"), false, "still standing");
+    assert.deepEqual(hurt.conditions, []);
+    // (Its best: Athletics +9 over Acrobatics +5, against the check's DC.)
+    const rolled = [];
+    const statistic = (slug, mod) => ({ slug, mod, roll: async (args) => (rolled.push([slug, args.dc.value, args.skipDialog]), { degreeOfSuccess: mod + 10 >= args.dc.value ? 2 : 1 }) });
+    const lander = { getStatistic: (slug) => ({ acrobatics: statistic("acrobatics", 5), athletics: statistic("athletics", 9) })[slug] };
+    assert.equal(await landStanding(lander, { statistics: ["acrobatics", "athletics"], dc: 18, source: "Impact Jelly" }), true);
+    assert.equal(await landStanding(lander, { statistics: ["acrobatics", "athletics"], dc: 25, source: "Impact Jelly" }), false);
+    assert.deepEqual(rolled, [["athletics", 18, true], ["athletics", 25, true]]);
+    assert.equal(await landStanding({ getStatistic: () => null }, { statistics: ["acrobatics"], dc: 10 }), false);
+    delete globalThis.CONFIG;
 });
 
 test("what of the weather a creature ignores: its Effects' weatherIgnores flags (not the module's own weather mark) and the item module's api", async () => {
