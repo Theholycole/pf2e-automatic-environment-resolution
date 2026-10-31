@@ -69,19 +69,26 @@ const slugsOf = (actor) => [...(actor?.items ?? [])].map((item) => item.slug ?? 
 // the core's shape [{ counts: { felt key: the key it counts as }, fatigueHours?, source }]: from its Effects that haven't run out (a
 // Cooling Elixir's, a Rime Jar's — flags[MODULE_ID].temperature), and from the item module's api for what it wears, invests or holds.
 const ITEM_ID = "pf2e-automatic-item-resolution";
-export function protectionsOf(actor, { temperature = null } = {}) {
-    const fromEffects = (actor?.itemTypes?.effect ?? []).filter((effect) => !(effect.isExpired ?? effect.system?.expired)).map((effect) => effect.flags?.[MODULE_ID]?.temperature).filter((entry) => entry?.counts);
-    let fromItems = [];
-    const api = game.modules.get(ITEM_ID)?.active ? game.modules.get(ITEM_ID)?.api : null;
-    if (typeof api?.temperatureProtections === "function") {
+// (2026-10-31, with the feat module's session: its feats and heritages answer the same three asks, Climate Adaptation, Murksight, Cat Fall.)
+const FEAT_ID = "pf2e-automatic-feat-resolution";
+// What each of the item and feat modules' api[name](actor, ...args) gives, kept: the entries that pass keep.
+function fromSuite(name, actor, args, keep, what) {
+    const out = [];
+    for (const id of [ITEM_ID, FEAT_ID]) {
+        const api = game.modules.get(id)?.active ? game.modules.get(id)?.api : null;
+        if (typeof api?.[name] !== "function") continue;
         try {
-            const read = api.temperatureProtections(actor, temperature ? { temperature } : {});
-            fromItems = Array.isArray(read) ? read.filter((entry) => entry?.counts) : [];
+            const read = api[name](actor, ...args);
+            if (Array.isArray(read)) out.push(...read.filter(keep));
         } catch (error) {
-            console.warn(`${MODULE_ID} | ${ITEM_ID}'s temperature protections for ${actor?.name}:`, error);
+            console.warn(`${MODULE_ID} | ${id}'s ${what} for ${actor?.name}:`, error);
         }
     }
-    return [...fromEffects, ...fromItems];
+    return out;
+}
+export function protectionsOf(actor, { temperature = null } = {}) {
+    const fromEffects = (actor?.itemTypes?.effect ?? []).filter((effect) => !(effect.isExpired ?? effect.system?.expired)).map((effect) => effect.flags?.[MODULE_ID]?.temperature).filter((entry) => entry?.counts);
+    return [...fromEffects, ...fromSuite("temperatureProtections", actor, [temperature ? { temperature } : {}], (entry) => entry?.counts, "temperature protections")];
 }
 
 // (2026-10-26, with the item module's session.) What of the weather it ignores (the core's weather.js ignoresWeather): [{ ignores: [keys],
@@ -90,17 +97,7 @@ export function protectionsOf(actor, { temperature = null } = {}) {
 // the Open Sky, Wintershot).
 export function weatherIgnoresOf(actor) {
     const fromEffects = (actor?.itemTypes?.effect ?? []).filter((effect) => !(effect.isExpired ?? effect.system?.expired)).map((effect) => effect.flags?.[MODULE_ID]?.weatherIgnores).filter((entry) => Array.isArray(entry?.ignores));
-    let fromItems = [];
-    const api = game.modules.get(ITEM_ID)?.active ? game.modules.get(ITEM_ID)?.api : null;
-    if (typeof api?.weatherIgnores === "function") {
-        try {
-            const read = api.weatherIgnores(actor);
-            fromItems = Array.isArray(read) ? read.filter((entry) => Array.isArray(entry?.ignores)) : [];
-        } catch (error) {
-            console.warn(`${MODULE_ID} | ${ITEM_ID}'s weather ignores for ${actor?.name}:`, error);
-        }
-    }
-    return [...fromEffects, ...fromItems];
+    return [...fromEffects, ...fromSuite("weatherIgnores", actor, [], (entry) => Array.isArray(entry?.ignores), "weather ignores")];
 }
 
 // (2026-10-25/26, with the item module's session.) What eases its falls: [{ shorter?: feet, noDamage?: true, landsOnFeet?: true, source }],
@@ -111,17 +108,7 @@ export function weatherIgnoresOf(actor) {
 const eases = (entry) => entry && (entry.noDamage || entry.landsOnFeet || entry.halved || entry.nonlethal || entry.landCheck || Number(entry.shorter) > 0 || Number(entry.reduceBy) > 0);
 export function fallEasesOf(actor) {
     const fromEffects = (actor?.itemTypes?.effect ?? []).filter((effect) => !(effect.isExpired ?? effect.system?.expired)).map((effect) => effect.flags?.[MODULE_ID]?.fall).filter(eases);
-    let fromItems = [];
-    const api = game.modules.get(ITEM_ID)?.active ? game.modules.get(ITEM_ID)?.api : null;
-    if (typeof api?.fallEases === "function") {
-        try {
-            const read = api.fallEases(actor);
-            fromItems = Array.isArray(read) ? read.filter(eases) : [];
-        } catch (error) {
-            console.warn(`${MODULE_ID} | ${ITEM_ID}'s fall eases for ${actor?.name}:`, error);
-        }
-    }
-    return [...fromEffects, ...fromItems];
+    return [...fromEffects, ...fromSuite("fallEases", actor, [], eases, "fall eases")];
 }
 
 // The creature as the rules see it.
