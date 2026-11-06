@@ -61,7 +61,7 @@ export function installTerrainCost() {
                 const difficulty = Math.clamp(Math.round(Math.clamp(Math.trunc(segment?.terrain?.difficulty ?? 1), 1, 3) / windFly), 1, 3);
                 return distance + (difficulty - 1) * scene.grid.distance * pf2eShare(ignored, difficulty);
             }
-            if (segment?.action !== "walk" || !terrain.length) return cost;
+            if (!["walk", "travel"].includes(segment?.action) || !terrain.length) return cost;
             const point = scene.grid.getCenterPoint({ i: to.i, j: to.j });
             const at = { ...point, elevation: Number(token.elevation) || 0 };
             const here = terrain.filter((entry) => entry.region.testPoint(at));

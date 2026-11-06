@@ -10,6 +10,12 @@ test("every script loads", async () => {
     await import("../scripts/main.js");
 });
 
+test("a region's costs: travel pays what walking does", async () => {
+    const { regionCosts } = await import("../scripts/regions.js");
+    assert.deepEqual(regionCosts({ costs: { walk: 2, climb: 2 } }), { walk: 2, climb: 2, travel: 2 });
+    assert.deepEqual(regionCosts({ costs: { walk: 1, swim: 2 } }), { swim: 2 });
+});
+
 test("a push: square by square, every second diagonal 10 feet", async () => {
     const { pushSquares } = await import("../scripts/movement.js");
     assert.equal(pushSquares(20, "E").length, 4);

@@ -23,6 +23,12 @@ export const regionFeature = (region) => region?.getFlag?.(MODULE_ID, TERRAIN) ?
 const insideEffects = (actor, regionUuid) => (actor?.itemTypes?.effect ?? []).filter((effect) => effect.flags?.[MODULE_ID]?.region === regionUuid);
 const tokensIn = (region) => [...(region?.tokens ?? [])];
 
+// A feature's movement costs for its behavior. (PF2e's characters can move by "travel" where NPCs "walk": both pay.)
+export function regionCosts(rules) {
+    const costs = Object.fromEntries(Object.entries(rules.costs).filter(([, cost]) => cost > 1));
+    return costs.walk ? { ...costs, travel: costs.walk } : costs;
+}
+
 // Give a region a feature (key null: take it away). current: { feet, direction } for flowing water; up: the direction stairs go up.
 export async function setRegionFeature(region, key, { dc = null, current = null, up = null } = {}) {
     const ours = [...region.behaviors].filter((behavior) => behavior.flags?.[MODULE_ID]?.[TERRAIN]);
@@ -34,7 +40,7 @@ export async function setRegionFeature(region, key, { dc = null, current = null,
     const rules = key ? featureRules(key, { dc }) : null;
     if (!rules) return region.unsetFlag(MODULE_ID, TERRAIN);
     const flags = { [MODULE_ID]: { [TERRAIN]: true } };
-    const costs = Object.fromEntries(Object.entries(rules.costs).filter(([, cost]) => cost > 1));
+    const costs = regionCosts(rules);
     const behaviors = [
         ...(Object.keys(costs).length ? [{ type: "modifyMovementCost", name: `${rules.label}: movement`, system: { difficulties: costs }, flags }] : []),
         ...(rules.environment.length ? [{ type: "environment", name: `${rules.label}: environment`, system: { environmentTypes: rules.environment, mode: "add" }, flags }] : []),
@@ -151,6 +157,11 @@ export async function migrateRegions() {
             return behavior.type === "executeScript" && behavior.flags?.[MODULE_ID]?.[TERRAIN] && EVENTS.some((name) => !events.has(name));
         });
         for (const behavior of stale) await behavior.update({ "system.events": EVENTS });
+        // (Before 0.2.4: "travel" paid nothing.)
+        for (const behavior of region.behaviors) {
+            const costs = behavior.type === "modifyMovementCost" && behavior.flags?.[MODULE_ID]?.[TERRAIN] ? behavior.system.difficulties : null;
+            if (costs && costs.walk > 1 && costs.travel !== costs.walk) await behavior.update({ "system.difficulties.travel": costs.walk });
+        }
     }
 }
 
